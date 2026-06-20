@@ -58,7 +58,7 @@ export const Culture = () => {
           </div>
 
           <div className="bg-card border border-border rounded-2xl p-5 shadow-card space-y-3">
-            <Globe className="w-6 h-6 text-purple-500" />
+            <Globe className="w-6 h-6 text-blue-500" />
             <h4 className="text-xs font-bold text-text-primary">Local Currency</h4>
             <p className="text-[11px] text-text-secondary leading-relaxed">
               Keep ₹1,000 in cash for small auto-rickshaws. JECRC ATMs inside campus support foreign cards.
@@ -79,7 +79,7 @@ export const Culture = () => {
       {/* Rajasthan Tourism Guides */}
       <div className="space-y-3">
         <h3 className="text-xs font-bold text-text-secondary uppercase tracking-widest flex items-center space-x-1.5">
-          <Compass className="w-4 h-4 text-purple-500" />
+          <Compass className="w-4 h-4 text-blue-500" />
           <span>Exploring Rajasthan</span>
         </h3>
 

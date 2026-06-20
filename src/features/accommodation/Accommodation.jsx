@@ -78,7 +78,7 @@ export const Accommodation = () => {
         {/* Mess and Laundry Schedule */}
         <div className="bg-card border border-border rounded-2xl p-6 shadow-card space-y-4">
           <div className="flex items-center space-x-3 text-text-primary">
-            <div className="p-2.5 rounded-lg bg-purple-500/10 text-purple-600">
+            <div className="p-2.5 rounded-lg bg-blue-500/10 text-blue-600">
               <Clock className="w-5 h-5" />
             </div>
             <h3 className="text-sm font-bold uppercase tracking-wider">Hostel Schedules</h3>

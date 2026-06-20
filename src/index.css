@@ -10,6 +10,18 @@
   --color-warning: #F59E0B;
   --color-danger: #EF4444;
   
+  --color-blue-50: #f0f7fc;
+  --color-blue-100: #e1f0fa;
+  --color-blue-200: #bce1f4;
+  --color-blue-300: #92caed;
+  --color-blue-400: #5faae2;
+  --color-blue-500: #1B75BB;
+  --color-blue-600: #0b3d59;
+  --color-blue-700: #082e43;
+  --color-blue-800: #062030;
+  --color-blue-900: #04141e;
+  --color-blue-950: #020a10;
+  
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);

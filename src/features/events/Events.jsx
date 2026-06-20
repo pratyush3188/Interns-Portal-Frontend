@@ -172,7 +172,7 @@ export const Events = () => {
                     </div>
                   </div>
                   <div className="flex items-start space-x-3">
-                    <Users className="w-4 h-4 text-purple-500 shrink-0 mt-0.5" />
+                    <Users className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />
                     <div>
                       <p className="font-bold text-text-primary">Host Organization</p>
                       <p className="text-text-secondary mt-0.5">{activeEvent.organizer}</p>

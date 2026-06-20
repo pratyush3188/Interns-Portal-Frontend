@@ -92,7 +92,7 @@ export const MyInternship = () => {
               </div>
             </div>
             <div className="flex items-center space-x-3 text-text-secondary">
-              <User className="w-4 h-4 text-purple-500" />
+              <User className="w-4 h-4 text-blue-500" />
               <div>
                 <p className="text-[10px] text-text-secondary uppercase font-bold">Supervisor Faculty</p>
                 <p className="font-semibold text-text-primary">{internProfile.supervisor}</p>
@@ -269,7 +269,7 @@ export const MyInternship = () => {
                       <p className="text-text-secondary leading-relaxed">{log.learnings}</p>
                     </div>
                     <div className="space-y-0.5">
-                      <p className="text-[9px] font-black uppercase text-purple-500">Next Week's Goals</p>
+                      <p className="text-[9px] font-black uppercase text-blue-500">Next Week's Goals</p>
                       <p className="text-text-secondary leading-relaxed">{log.goals}</p>
                     </div>
                   </div>

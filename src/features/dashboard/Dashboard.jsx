@@ -146,7 +146,7 @@ export const Dashboard = () => {
                 to="/calendar"
                 className="flex flex-col items-center justify-center p-4 bg-slate-50 dark:bg-slate-900/40 border border-border rounded-xl hover:bg-slate-100/50 dark:hover:bg-slate-800/50 transition-colors text-center space-y-2 group"
               >
-                <div className="p-2.5 rounded-lg bg-purple-500/10 text-purple-500">
+                <div className="p-2.5 rounded-lg bg-blue-500/10 text-blue-500">
                   <Calendar className="w-5 h-5" />
                 </div>
                 <span className="text-xs font-semibold text-text-primary group-hover:underline">Open Calendar</span>
@@ -314,7 +314,7 @@ export const Dashboard = () => {
           {/* Social Events Feed */}
           <motion.div variants={itemVariants} className="bg-card rounded-2xl border border-border p-6 shadow-card flex flex-col h-[340px]">
             <h3 className="text-sm font-bold text-text-primary uppercase tracking-wider mb-4 flex items-center space-x-2 shrink-0">
-              <Compass className="w-4 h-4 text-purple-500" />
+              <Compass className="w-4 h-4 text-blue-500" />
               <span>Upcoming Events</span>
             </h3>
             
@@ -329,7 +329,7 @@ export const Dashboard = () => {
                   <div className="min-w-0">
                     <h4 className="text-xs font-bold text-text-primary truncate">{event.title}</h4>
                     <p className="text-[10px] text-text-secondary mt-0.5">{event.date} • {event.time}</p>
-                    <span className="text-[9px] bg-purple-500/10 text-purple-500 px-1.5 py-0.5 rounded-full font-bold uppercase mt-1 inline-block">
+                    <span className="text-[9px] bg-blue-500/10 text-blue-500 px-1.5 py-0.5 rounded-full font-bold uppercase mt-1 inline-block">
                       {event.category}
                     </span>
                   </div>
