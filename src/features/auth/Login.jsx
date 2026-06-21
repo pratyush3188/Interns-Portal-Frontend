@@ -7,6 +7,7 @@ import Footer from '../../components/Footer';
 import logo from '../../assets/Iaeste Logo Standard.png';
 import verticalLogo from '../../assets/logo-removebg-preview 1.png';
 import { apiFetch, setAuthSession } from '../../utils/api';
+import { defaultProfiles } from '../../store/useAuthStore';
 
 export const Login = () => {
   const [email, setEmail] = useState('');
@@ -39,14 +40,11 @@ export const Login = () => {
     }
   };
 
-  const fillCredentials = (type) => {
-    if (type === 'admin') {
-      setEmail('admin@iaeste.in');
-      setPassword('admin123');
-    } else {
-      setEmail('member@iaeste.in');
-      setPassword('member123');
-    }
+  const handleQuickLogin = (role) => {
+    const userProfile = defaultProfiles[role];
+    setAuthSession({ token: "mock-jwt-token-12345", user: userProfile });
+    toast.success(`Logged in as ${userProfile.name} (${role.toUpperCase()})`);
+    navigate('/dashboard');
   };
 
   return (
@@ -186,6 +184,36 @@ export const Login = () => {
                   <button type="button" onClick={() => toast("Registration is managed by IAESTE office.")} className="text-[#0B3D59] hover:text-[#072a3f] font-semibold transition-colors cursor-pointer">Register Now!</button>
                 </div>
               </form>
+
+              {/* Quick Demo Logins */}
+              <div className="mt-8 pt-6 border-t border-gray-100">
+                <p className="text-center text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">
+                  Quick Demo Login
+                </p>
+                <div className="grid grid-cols-3 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => handleQuickLogin('intern')}
+                    className="py-2.5 px-3 bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-600 text-xs font-bold rounded-lg transition-all duration-200 hover:scale-[1.02] cursor-pointer text-center"
+                  >
+                    Intern
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleQuickLogin('faculty')}
+                    className="py-2.5 px-3 bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-600 text-xs font-bold rounded-lg transition-all duration-200 hover:scale-[1.02] cursor-pointer text-center"
+                  >
+                    Faculty
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleQuickLogin('admin')}
+                    className="py-2.5 px-3 bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-600 text-xs font-bold rounded-lg transition-all duration-200 hover:scale-[1.02] cursor-pointer text-center"
+                  >
+                    Admin
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>

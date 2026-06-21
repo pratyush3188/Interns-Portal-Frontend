@@ -265,7 +265,7 @@ export const Tasks = () => {
                           task.status === "completed"
                             ? "bg-green-100 text-green-700 dark:bg-green-950/20"
                             : task.status === "review"
-                            ? "bg-purple-100 text-purple-700 dark:bg-purple-950/20"
+                            ? "bg-blue-100 text-blue-700 dark:bg-blue-950/20"
                             : task.status === "in_progress"
                             ? "bg-blue-100 text-blue-700 dark:bg-blue-950/20"
                             : "bg-slate-100 text-slate-700 dark:bg-slate-800/40"

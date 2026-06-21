@@ -136,7 +136,7 @@ export const Emergency = () => {
 
           <div className="space-y-2">
             <h4 className="font-extrabold text-text-primary flex items-center space-x-1.5">
-              <span className="w-2 h-2 rounded-full bg-purple-500"></span>
+              <span className="w-2 h-2 rounded-full bg-blue-500"></span>
               <span>Late Entry/Curfew Protocol</span>
             </h4>
             <p className="text-text-secondary">

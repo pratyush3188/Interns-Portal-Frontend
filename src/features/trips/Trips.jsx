@@ -104,7 +104,7 @@ export const Trips = () => {
                           <span>{trip.duration}</span>
                         </div>
                         <div className="flex items-center space-x-1">
-                          <Calendar className="w-3.5 h-3.5 text-purple-500" />
+                          <Calendar className="w-3.5 h-3.5 text-blue-500" />
                           <span>{trip.date}</span>
                         </div>
                       </div>
@@ -276,7 +276,7 @@ export const Trips = () => {
                 {/* Packing List */}
                 <div className="bg-card border border-border rounded-2xl p-5 shadow-card space-y-4">
                   <h3 className="text-xs font-bold text-text-primary uppercase tracking-wider flex items-center space-x-2">
-                    <Backpack className="w-4 h-4 text-purple-500" />
+                    <Backpack className="w-4 h-4 text-blue-500" />
                     <span>Packing Checklist</span>
                   </h3>
                   <div className="space-y-2 text-xs">

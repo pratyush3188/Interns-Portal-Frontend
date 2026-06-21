@@ -86,7 +86,7 @@ export const Calendar = () => {
                 <span className="font-medium text-text-secondary">Weekend Excursions</span>
               </div>
               <div className="flex items-center space-x-3">
-                <span className="w-3.5 h-3.5 rounded-full bg-purple-500 shrink-0"></span>
+                <span className="w-3.5 h-3.5 rounded-full bg-blue-500 shrink-0"></span>
                 <span className="font-medium text-text-secondary">Cultural Gatherings</span>
               </div>
               <div className="flex items-center space-x-3">
