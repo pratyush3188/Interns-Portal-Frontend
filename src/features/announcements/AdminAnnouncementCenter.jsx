@@ -1,26 +1,30 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Card } from "../../components/ui/Card";
 import { Badge } from "../../components/ui/Badge";
 import { Button } from "../../components/ui/Button";
 import { toast, Toaster } from "react-hot-toast";
 import { 
-  Megaphone, 
-  Plus, 
-  Trash2, 
-  Clock, 
-  User, 
-  X,
-  Edit3,
-  Calendar,
-  AlertTriangle
+  Megaphone, Plus, Trash2, Clock, User, X, Edit3, Calendar, AlertTriangle
 } from "lucide-react";
-import { announcements as initialAnnouncements } from "../../mocks/index";
 
 export const AdminAnnouncementCenter = () => {
-  const [bulletins, setBulletins] = useState(initialAnnouncements);
+  const [bulletins, setBulletins] = useState([]);
   const [isPosting, setIsPosting] = useState(false);
   const [editingBulletin, setEditingBulletin] = useState(null);
+
+  const fetchAnnouncements = async () => {
+    try {
+      const res = await fetch("http://localhost:5000/api/admin/announcements", {
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
+      });
+      if (res.ok) setBulletins(await res.json());
+    } catch (err) { console.error(err); }
+  };
+
+  useEffect(() => {
+    fetchAnnouncements();
+  }, []);
 
   // Form states
   const [title, setTitle] = useState("");
@@ -29,45 +33,42 @@ export const AdminAnnouncementCenter = () => {
   const [priority, setPriority] = useState("Medium");
   const [scheduleDate, setScheduleDate] = useState("");
 
-  const handlePost = (e) => {
+  const handlePost = async (e) => {
     e.preventDefault();
     if (!title.trim() || !message.trim()) {
-      toast.error("Please fill in the title and bulletin details.");
-      return;
+      return toast.error("Please fill in the title and bulletin details.");
     }
 
-    if (editingBulletin) {
-      // Edit mode
-      const updated = bulletins.map(b => b.id === editingBulletin.id ? {
-        ...b,
-        title,
-        category,
-        message,
-        priority,
-        scheduleDate: scheduleDate || "Immediate"
-      } : b);
-      setBulletins(updated);
-      setEditingBulletin(null);
-      toast.success("Announcement updated successfully!");
-    } else {
-      // Add mode
-      const newBulletin = {
-        id: `announce-${Date.now()}`,
-        title,
-        message,
-        category,
-        date: new Date().toISOString().split("T")[0],
-        pinned: priority === "High",
-        author: "IAESTE Coordinator",
-        priority,
-        scheduleDate: scheduleDate || "Immediate"
-      };
-      setBulletins([newBulletin, ...bulletins]);
-      toast.success("Announcement posted to all portals!");
-    }
-
-    setIsPosting(false);
-    clearForm();
+    try {
+      if (editingBulletin) {
+        // Edit flow (if implemented in backend later)
+        toast.error("Edit not fully supported yet in API");
+      } else {
+        const payload = {
+          title,
+          message,
+          category,
+          priority,
+          type: "Global"
+        };
+        const res = await fetch("http://localhost:5000/api/admin/announcements", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${localStorage.getItem("token")}`
+          },
+          body: JSON.stringify(payload)
+        });
+        if (res.ok) {
+          toast.success("Announcement posted to all portals!");
+          fetchAnnouncements();
+          setIsPosting(false);
+          clearForm();
+        } else {
+          toast.error("Failed to post announcement");
+        }
+      }
+    } catch (err) { toast.error("Error communicating with server"); }
   };
 
   const handleEditClick = (bulletin) => {
@@ -80,9 +81,17 @@ export const AdminAnnouncementCenter = () => {
     setIsPosting(true);
   };
 
-  const handleDelete = (id) => {
-    setBulletins(bulletins.filter(b => b.id !== id));
-    toast.success("Announcement deleted successfully!");
+  const handleDelete = async (id) => {
+    try {
+      const res = await fetch(`http://localhost:5000/api/admin/announcements/${id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
+      });
+      if (res.ok) {
+        toast.success("Announcement deleted successfully!");
+        fetchAnnouncements();
+      }
+    } catch (err) { toast.error("Failed to delete announcement"); }
   };
 
   const clearForm = () => {
@@ -123,7 +132,7 @@ export const AdminAnnouncementCenter = () => {
       {/* Announcements List Grid */}
       <div className="grid grid-cols-1 gap-4 text-xs">
         {bulletins.map((announce) => (
-          <Card key={announce.id} className="p-5 border border-border flex flex-col justify-between space-y-4 hover:shadow-md transition-shadow">
+          <Card key={announce._id} className="p-5 border border-border flex flex-col justify-between space-y-4 hover:shadow-md transition-shadow">
             <div className="space-y-2">
               <div className="flex justify-between items-start">
                 <div className="flex flex-wrap gap-2 items-center">
@@ -135,18 +144,12 @@ export const AdminAnnouncementCenter = () => {
                   </span>
                   <span className="text-[10px] text-text-secondary font-bold flex items-center space-x-1.5">
                     <Clock className="w-3.5 h-3.5" />
-                    <span>Published: {announce.date}</span>
+                    <span>Published: {new Date(announce.createdAt).toLocaleDateString()}</span>
                   </span>
-                  {announce.scheduleDate && announce.scheduleDate !== "Immediate" && (
-                    <span className="text-[10px] text-blue-600 font-bold bg-blue-50 px-1.5 py-0.5 rounded">
-                      Scheduled: {announce.scheduleDate}
-                    </span>
-                  )}
                 </div>
 
                 <div className="flex items-center space-x-1">
-                  <button onClick={() => handleEditClick(announce)} className="p-1 rounded text-blue-500 hover:bg-blue-50 cursor-pointer" title="Edit broadcast"><Edit3 className="w-4 h-4" /></button>
-                  <button onClick={() => handleDelete(announce.id)} className="p-1 rounded text-red-500 hover:bg-red-50 cursor-pointer" title="Delete broadcast"><Trash2 className="w-4 h-4" /></button>
+                  <button onClick={() => handleDelete(announce._id)} className="p-1 rounded text-red-500 hover:bg-red-50 cursor-pointer" title="Delete broadcast"><Trash2 className="w-4 h-4" /></button>
                 </div>
               </div>
 
@@ -157,7 +160,7 @@ export const AdminAnnouncementCenter = () => {
             </div>
 
             <div className="flex items-center justify-between border-t border-border pt-3 text-[10px] font-bold text-text-secondary">
-              <span>Creator: {announce.author}</span>
+              <span>Creator: Admin Team</span>
             </div>
           </Card>
         ))}

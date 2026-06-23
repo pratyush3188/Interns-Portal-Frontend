@@ -19,19 +19,42 @@ import {
   ArrowRight,
   TrendingUp
 } from "lucide-react";
-import { internDirectory, logbookReviews, meetings } from "../../mocks/index";
+import { logbookReviews, meetings } from "../../mocks/index";
 
 export const FacultyDashboard = () => {
   const { user } = useAuthStore();
   const navigate = useNavigate();
 
+  const [interns, setInterns] = React.useState([]);
+
+  React.useEffect(() => {
+    const fetchInterns = async () => {
+      try {
+        const res = await fetch("http://localhost:5000/api/faculty/interns", {
+          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
+        });
+        const data = await res.json();
+        if (res.ok) {
+          setInterns(data.map(i => ({ ...i, id: i._id })));
+        }
+      } catch (err) {
+        console.error("Failed to load dashboard data");
+      }
+    };
+    fetchInterns();
+  }, []);
+
   // Faculty Metrics
+  const assignedCount = interns.length;
+  const activeCount = interns.filter(i => i.status !== "Completed").length;
+  const avgProgress = interns.length ? Math.round(interns.reduce((sum, i) => sum + (i.progress || 0), 0) / interns.length) : 0;
+  
   const stats = [
-    { label: "Assigned Interns", value: "3", icon: Users, trend: "Supervising", trendUp: true },
-    { label: "Active Interns", value: "3", icon: Activity, trend: "In lab", trendUp: true },
+    { label: "Assigned Interns", value: assignedCount.toString(), icon: Users, trend: "Supervising", trendUp: true },
+    { label: "Active Interns", value: activeCount.toString(), icon: Activity, trend: "In lab", trendUp: true },
     { label: "Pending Reviews", value: "2", icon: BookOpen, trend: "Logbooks", trendUp: false },
     { label: "Upcoming Meetings", value: "2", icon: Video, trend: "Syncs planned", trendUp: true },
-    { label: "Project Completion Avg", value: "69%", icon: TrendingUp, trend: "On track", trendUp: true }
+    { label: "Project Completion Avg", value: `${avgProgress}%`, icon: TrendingUp, trend: "On track", trendUp: true }
   ];
 
   const containerVariants = {
@@ -129,26 +152,29 @@ export const FacultyDashboard = () => {
             </div>
 
             <div className="space-y-4 divide-y divide-border">
-              {internDirectory.slice(0, 3).map((intern) => (
+              {interns.slice(0, 3).map((intern) => (
                 <div key={intern.id} className="pt-4 first:pt-0 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div className="space-y-1">
                     <h4 className="text-xs font-bold text-text-primary">{intern.name}</h4>
-                    <p className="text-[10px] text-text-secondary font-medium truncate max-w-sm">{intern.projectTitle}</p>
+                    <p className="text-[10px] text-text-secondary font-medium truncate max-w-sm">{intern.department} Department</p>
                   </div>
                   <div className="flex items-center space-x-4 shrink-0 w-full sm:w-64">
                     <div className="flex-1">
                       <div className="flex justify-between text-[9px] font-bold text-text-secondary mb-1">
                         <span>Overall Progress</span>
-                        <span>{intern.progress}%</span>
+                        <span>{intern.progress || 0}%</span>
                       </div>
-                      <ProgressBar progress={intern.progress} className="h-1.5" colorClass="bg-blue-600" />
+                      <ProgressBar progress={intern.progress || 0} className="h-1.5" colorClass="bg-blue-600" />
                     </div>
-                    <Badge variant={intern.status.includes("Started") ? "info" : "warning"}>
-                      {intern.status}
+                    <Badge variant={intern.status && intern.status.includes("Started") ? "info" : "warning"}>
+                      {intern.status || "Application Received"}
                     </Badge>
                   </div>
                 </div>
               ))}
+              {interns.length === 0 && (
+                <div className="pt-4 text-center text-text-secondary italic">No interns assigned yet.</div>
+              )}
             </div>
           </motion.div>
 

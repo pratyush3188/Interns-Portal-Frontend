@@ -1,25 +1,33 @@
 import { useAuthStore, defaultProfiles } from '../store/useAuthStore';
 
-export const apiFetch = async (url, options) => {
-  if (url === '/api/auth/login') {
-    const { email, password } = options.body;
-    
-    if (email && password) {
-      let userProfile = defaultProfiles.intern;
-      if (email === "faculty@iaeste.org") {
-        userProfile = defaultProfiles.faculty;
-      } else if (email === "admin@iaeste.org") {
-        userProfile = defaultProfiles.admin;
-      }
+const API_BASE_URL = "http://localhost:5000";
 
-      return {
-        token: "mock-jwt-token-12345",
-        user: userProfile
-      };
-    }
-    throw new Error("Invalid credentials");
+export const apiFetch = async (url, options = {}) => {
+  const token = localStorage.getItem("token");
+  
+  const headers = {
+    "Content-Type": "application/json",
+    ...(token && { Authorization: `Bearer ${token}` }),
+    ...options.headers,
+  };
+
+  const fetchOptions = {
+    ...options,
+    headers,
+  };
+
+  if (options.body && typeof options.body === "object") {
+    fetchOptions.body = JSON.stringify(options.body);
   }
-  return {};
+
+  const response = await fetch(`${API_BASE_URL}${url}`, fetchOptions);
+
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.message || "Something went wrong");
+  }
+
+  return data;
 };
 
 export const setAuthSession = ({ token, user }) => {

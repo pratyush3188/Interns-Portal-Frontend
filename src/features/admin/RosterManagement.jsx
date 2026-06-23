@@ -14,16 +14,36 @@ import {
 import { internDirectory } from "../../mocks/index";
 
 export const RosterManagement = () => {
+  const [interns, setInterns] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [countryFilter, setCountryFilter] = useState("");
   const [deptFilter, setDeptFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
 
-  const countries = [...new Set(internDirectory.map(i => i.country))];
-  const departments = [...new Set(internDirectory.map(i => i.department))];
-  const statuses = [...new Set(internDirectory.map(i => i.status))];
+  React.useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        const response = await fetch("http://localhost:5000/api/admin/users", {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`
+          }
+        });
+        const data = await response.json();
+        if (response.ok) {
+          setInterns(data.interns.map(i => ({ ...i, id: i._id })));
+        }
+      } catch (err) {
+        toast.error("Failed to fetch roster");
+      }
+    };
+    fetchUsers();
+  }, []);
 
-  const filtered = internDirectory.filter(intern => {
+  const countries = [...new Set(interns.map(i => i.country))];
+  const departments = [...new Set(interns.map(i => i.department))];
+  const statuses = [...new Set(interns.map(i => i.status || "Application Received"))];
+
+  const filtered = interns.filter(intern => {
     const matchesSearch = intern.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       intern.university.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCountry = !countryFilter || intern.country === countryFilter;
@@ -131,10 +151,10 @@ export const RosterManagement = () => {
                   <td className="px-6 py-4 text-text-secondary font-medium">{intern.country}</td>
                   <td className="px-6 py-4 text-text-secondary font-medium">{intern.university}</td>
                   <td className="px-6 py-4 font-bold text-blue-600">{intern.department}</td>
-                  <td className="px-6 py-4 text-text-secondary font-semibold">{intern.arrivalDate}</td>
+                  <td className="px-6 py-4 text-text-secondary font-semibold">{intern.arrivalDate || "Pending"}</td>
                   <td className="px-6 py-4">
-                    <Badge variant={intern.status.includes("Started") ? "info" : "warning"}>
-                      {intern.status}
+                    <Badge variant={intern.status && intern.status.includes("Started") ? "info" : "warning"}>
+                      {intern.status || "Application Received"}
                     </Badge>
                   </td>
                 </tr>

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { 
   ResponsiveContainer, 
   BarChart, 
@@ -25,37 +25,86 @@ import {
   UserCheck 
 } from "lucide-react";
 
-const progressDistribution = [
-  { name: "Sophia Müller", progress: 75, tasks: 12 },
-  { name: "Markus Fischer", progress: 88, tasks: 15 },
-  { name: "Elena Rostova", progress: 45, tasks: 5 },
-  { name: "Lucas Dupont", progress: 10, tasks: 1 },
-  { name: "Anna Nowak", progress: 95, tasks: 18 }
-];
-
-const reviewTrends = [
-  { week: "Wk 1", reviewsSubmitted: 4, reviewsApproved: 4 },
-  { week: "Wk 2", reviewsSubmitted: 5, reviewsApproved: 3 },
-  { week: "Wk 3", reviewsSubmitted: 6, reviewsApproved: 5 },
-  { week: "Wk 4", reviewsSubmitted: 3, reviewsApproved: 3 }
-];
-
-const attendanceMetrics = [
-  { name: "90%+", value: 4 },
-  { name: "80%-90%", value: 1 },
-  { name: "<80%", value: 0 }
-];
-
 const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884d8"];
 
 export const FacultyAnalytics = () => {
+  const [interns, setInterns] = useState([]);
+  const [tasks, setTasks] = useState([]);
+  const [logbooks, setLogbooks] = useState([]);
+
+  useEffect(() => {
+    const fetchAnalyticsData = async () => {
+      try {
+        const headers = { Authorization: `Bearer ${localStorage.getItem("token")}` };
+        const [intRes, tskRes, logRes] = await Promise.all([
+          fetch("http://localhost:5000/api/faculty/interns", { headers }),
+          fetch("http://localhost:5000/api/faculty/tasks", { headers }),
+          fetch("http://localhost:5000/api/faculty/logbooks", { headers })
+        ]);
+
+        if (intRes.ok && tskRes.ok && logRes.ok) {
+          const internsData = await intRes.json();
+          const tasksData = await tskRes.json();
+          const logbooksData = await logRes.json();
+          setInterns(Array.isArray(internsData) ? internsData : []);
+          setTasks(Array.isArray(tasksData) ? tasksData : []);
+          setLogbooks(Array.isArray(logbooksData) ? logbooksData : []);
+        }
+      } catch (err) { console.error("Failed to load analytics"); }
+    };
+    fetchAnalyticsData();
+  }, []);
+
+  // Compute Progress Distribution
+  const progressDistribution = interns.map(intern => {
+    const internTasks = tasks.filter(t => t.internId?._id === intern._id || t.internId === intern._id);
+    const completedTasks = internTasks.filter(t => t.status === "completed").length;
+    const progress = internTasks.length > 0 ? Math.round((completedTasks / internTasks.length) * 100) : (intern.progress || 0);
+    return {
+      name: intern.name,
+      progress,
+      tasks: completedTasks
+    };
+  });
+
+  // Compute Review Trends
+  const logbookData = {};
+  logbooks.forEach(log => {
+    const weekLabel = `Wk ${log.week}`;
+    if (!logbookData[weekLabel]) {
+      logbookData[weekLabel] = { week: weekLabel, reviewsSubmitted: 0, reviewsApproved: 0 };
+    }
+    logbookData[weekLabel].reviewsSubmitted++;
+    if (log.status === "Approved") logbookData[weekLabel].reviewsApproved++;
+  });
+  const reviewTrends = Object.values(logbookData).sort((a,b) => {
+    const numA = parseInt(a.week.replace("Wk ", ""));
+    const numB = parseInt(b.week.replace("Wk ", ""));
+    return numA - numB;
+  });
+
+  // Compute Engagement Brackets instead of hardcoded attendance
+  const highlyEngaged = progressDistribution.filter(p => p.progress >= 80).length;
+  const mediumEngaged = progressDistribution.filter(p => p.progress >= 40 && p.progress < 80).length;
+  const lowEngaged = progressDistribution.filter(p => p.progress < 40).length;
+
+  const engagementMetrics = [
+    { name: "High Progress (80%+)", value: highlyEngaged },
+    { name: "Medium Progress (40-80%)", value: mediumEngaged },
+    { name: "Low Progress (<40%)", value: lowEngaged }
+  ].filter(e => e.value > 0);
+
+  if (engagementMetrics.length === 0) {
+    engagementMetrics.push({ name: "No Interns", value: 1 });
+  }
+
   return (
     <div className="space-y-6 text-foreground pb-12">
       {/* Header */}
       <div>
         <h1 className="text-xl sm:text-2xl font-black text-text-primary">Faculty Performance Analytics</h1>
         <p className="text-xs text-text-secondary mt-1">
-          Review overall student progress distributions, task completion rates, logbook submission trendlines, and attendance metrics.
+          Review overall student progress distributions, task completion rates, logbook submission trendlines, and engagement metrics based on your assigned interns.
         </p>
       </div>
 
@@ -103,11 +152,11 @@ export const FacultyAnalytics = () => {
         </ChartContainer>
 
         {/* Attendance Pie Chart */}
-        <ChartContainer title="Attendance Statistics" subtitle="Distribution of interns across attendance brackets">
+        <ChartContainer title="Engagement Statistics" subtitle="Distribution of interns across progress brackets">
           <ResponsiveContainer width="100%" height={300}>
             <PieChart>
               <Pie
-                data={attendanceMetrics}
+                data={engagementMetrics}
                 cx="50%"
                 cy="50%"
                 innerRadius={60}
@@ -117,7 +166,7 @@ export const FacultyAnalytics = () => {
                 dataKey="value"
                 label
               >
-                {attendanceMetrics.map((entry, index) => (
+                {engagementMetrics.map((entry, index) => (
                   <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                 ))}
               </Pie>

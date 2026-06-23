@@ -1,47 +1,52 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { trips as initialTrips } from "../../mocks/index";
 import { motion, AnimatePresence } from "framer-motion";
 import { MapPin, Calendar, Clock, DollarSign, Users, Check, ArrowLeft, Image, Backpack } from "lucide-react";
 import { toast, Toaster } from "react-hot-toast";
 
 export const Trips = () => {
-  const [tripsList, setTripsList] = useState(initialTrips);
-  const [activeTrip, setActiveTrip] = useState(null); // Selected trip for detailed view
-  const [registeredTrips, setRegisteredTrips] = useState({}); // { [tripId]: "registered" | "waiting" | null }
+  const [tripsList, setTripsList] = useState([]);
+  const [activeTrip, setActiveTrip] = useState(null);
+  const [registeredTrips, setRegisteredTrips] = useState({});
 
-  const handleRegister = (tripId) => {
-    const trip = tripsList.find((t) => t.id === tripId);
-    let updatedTrip = { ...trip };
+  useEffect(() => {
+    fetchTrips();
+  }, []);
 
-    if (registeredTrips[tripId]) {
-      // Unregister
-      if (registeredTrips[tripId] === "registered") {
-        updatedTrip.seatsAvailable += 1;
-        updatedTrip.registeredCount -= 1;
+  const fetchTrips = async () => {
+    try {
+      const res = await fetch("http://localhost:5000/api/intern/trips", {
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const safeData = Array.isArray(data) ? data : [];
+        if (safeData.length === 0) setTripsList(initialTrips);
+        else setTripsList(safeData);
       } else {
-        updatedTrip.waitingListCount -= 1;
+        setTripsList(initialTrips);
       }
-      setRegisteredTrips({ ...registeredTrips, [tripId]: null });
-      toast.success("Successfully unregistered from the trip.");
-    } else {
-      // Register
-      if (trip.seatsAvailable > 0) {
-        updatedTrip.seatsAvailable -= 1;
-        updatedTrip.registeredCount += 1;
+    } catch (err) { console.error(err); }
+  };
+
+
+  const handleRegister = async (tripId) => {
+    try {
+      const res = await fetch(`http://localhost:5000/api/intern/trips/${tripId}/register`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
+      });
+      if (res.ok) {
+        toast.success("Successfully registered for the trip!");
         setRegisteredTrips({ ...registeredTrips, [tripId]: "registered" });
-        toast.success(`You are registered for the ${trip.destination}! Check your itinerary.`);
+        fetchTrips();
+        // Option: close the active trip or update it if needed. For simplicity we update it:
+        const updatedData = await res.json();
+        setActiveTrip(updatedData);
       } else {
-        updatedTrip.waitingListCount += 1;
-        setRegisteredTrips({ ...registeredTrips, [tripId]: "waiting" });
-        toast.success("No seats left! Added to the Waiting List.");
+        toast.error("Failed to register");
       }
-    }
-
-    setTripsList(tripsList.map((t) => (t.id === tripId ? updatedTrip : t)));
-    // Sync current detail view if open
-    if (activeTrip && activeTrip.id === tripId) {
-      setActiveTrip(updatedTrip);
-    }
+    } catch (err) { toast.error("Error registering"); }
   };
 
   return (
@@ -69,8 +74,8 @@ export const Trips = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {tripsList.map((trip) => (
                 <motion.div
-                  key={trip.id}
-                  layoutId={`trip-card-${trip.id}`}
+                  key={trip._id}
+                  layoutId={`trip-card-${trip._id}`}
                   onClick={() => setActiveTrip(trip)}
                   className="bg-card border border-border rounded-2xl overflow-hidden shadow-card hover-lift cursor-pointer flex flex-col h-full"
                 >
@@ -178,7 +183,7 @@ export const Trips = () => {
                     Itinerary Timeline
                   </h3>
                   <div className="space-y-4">
-                    {activeTrip.schedule.map((sched, idx) => (
+                    {activeTrip.schedule?.map((sched, idx) => (
                       <div key={idx} className="flex gap-4 items-start">
                         <span className="bg-[#04376C]/10 dark:bg-[#1E6FD9]/20 text-[#04376C] dark:text-[#1E6FD9] font-black text-[10px] px-2.5 py-1 rounded-md shrink-0">
                           {sched.day}
@@ -188,6 +193,9 @@ export const Trips = () => {
                         </p>
                       </div>
                     ))}
+                    {!activeTrip.schedule?.length && (
+                       <p className="text-xs text-text-secondary italic">Schedule will be provided closer to the departure date.</p>
+                    )}
                   </div>
                 </div>
 
@@ -198,7 +206,7 @@ export const Trips = () => {
                     <span>Trip Gallery Memories</span>
                   </h3>
                   <div className="columns-1 sm:columns-3 gap-4 space-y-4">
-                    {activeTrip.gallery.map((url, idx) => (
+                    {activeTrip.gallery?.map((url, idx) => (
                       <div key={idx} className="break-inside-avoid overflow-hidden rounded-xl border border-border shadow-sm">
                         <img
                           src={url}
@@ -207,6 +215,9 @@ export const Trips = () => {
                         />
                       </div>
                     ))}
+                    {!activeTrip.gallery?.length && (
+                       <p className="text-xs text-text-secondary italic">No gallery images available yet.</p>
+                    )}
                   </div>
                 </div>
               </div>
@@ -248,21 +259,21 @@ export const Trips = () => {
 
                   {/* Register Trigger button */}
                   <button
-                    onClick={() => handleRegister(activeTrip.id)}
+                    onClick={() => handleRegister(activeTrip._id)}
                     className={`w-full py-2.5 px-4 rounded-xl text-xs font-bold transition-all flex items-center justify-center space-x-2 border cursor-pointer ${
-                      registeredTrips[activeTrip.id] === "registered"
+                      registeredTrips[activeTrip._id] === "registered"
                         ? "bg-green-500 text-white border-green-500"
-                        : registeredTrips[activeTrip.id] === "waiting"
+                        : registeredTrips[activeTrip._id] === "waiting"
                         ? "bg-amber-500 text-white border-amber-500"
                         : "bg-[#04376C] dark:bg-[#1E6FD9] text-white border-transparent hover:opacity-90 shadow-md"
                     }`}
                   >
-                    {registeredTrips[activeTrip.id] === "registered" ? (
+                    {registeredTrips[activeTrip._id] === "registered" ? (
                       <>
                         <Check className="w-4 h-4" />
                         <span>Registered (Seat Confirmed)</span>
                       </>
-                    ) : registeredTrips[activeTrip.id] === "waiting" ? (
+                    ) : registeredTrips[activeTrip._id] === "waiting" ? (
                       <>
                         <Check className="w-4 h-4" />
                         <span>On Waiting List</span>
@@ -280,7 +291,7 @@ export const Trips = () => {
                     <span>Packing Checklist</span>
                   </h3>
                   <div className="space-y-2 text-xs">
-                    {activeTrip.packingChecklist.map((item, idx) => (
+                    {activeTrip.packingChecklist?.map((item, idx) => (
                       <div key={idx} className="flex items-center space-x-2">
                         <input
                           type="checkbox"
@@ -289,6 +300,9 @@ export const Trips = () => {
                         <span className="text-text-secondary font-medium">{item}</span>
                       </div>
                     ))}
+                    {!activeTrip.packingChecklist?.length && (
+                      <p className="text-text-secondary italic">Standard travel packing recommended.</p>
+                    )}
                   </div>
                 </div>
 

@@ -1,42 +1,23 @@
-import { buddy, internProfile } from "../../mocks/index";
+import { useState, useEffect } from "react";
+import { buddy } from "../../mocks/index";
 import { motion } from "framer-motion";
 import { Phone, AlertOctagon, HeartPulse, Shield, MessageSquare, Info } from "lucide-react";
 import { toast, Toaster } from "react-hot-toast";
 
 export const Emergency = () => {
-  const contacts = [
-    {
-      role: "IAESTE JECRC Coordinator",
-      name: "Prof. Rajesh Gupta",
-      phone: "+91 94140 12345",
-      type: "coordinator",
-    },
-    {
-      role: "Assigned Student Buddy",
-      name: buddy.name,
-      phone: buddy.phone,
-      type: "buddy",
-    },
-    {
-      role: "JECRC Main Security Desk",
-      name: "Campus Security Team",
-      phone: "+91 141 2771500",
-      type: "security",
-    },
-    {
-      role: "Mahatma Gandhi Hospital (Jaipur)",
-      name: "Emergency Room Reception",
-      phone: "+91 141 2770798",
-      type: "hospital",
-    },
-    {
-      role: "Local Police Control Room",
-      name: "Jaipur Police (Sanganer)",
-      phone: "112 (National Helpline)",
-      type: "police",
-    }
-  ];
+  const [contacts, setContacts] = useState([]);
 
+  useEffect(() => {
+    const fetchContacts = async () => {
+      try {
+        const res = await fetch("http://localhost:5000/api/intern/emergency-contacts", {
+          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
+        });
+        if (res.ok) setContacts(await res.json());
+      } catch (err) { console.error(err); }
+    };
+    fetchContacts();
+  }, []);
   const handleDialSim = (name, phone) => {
     toast.success(`Dialing Emergency: ${name} (${phone}). Calling simulated.`);
   };
@@ -67,7 +48,7 @@ export const Emergency = () => {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {contacts.map((contact, idx) => (
             <motion.div
-              key={idx}
+              key={contact._id || idx}
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: idx * 0.05 }}
@@ -75,26 +56,20 @@ export const Emergency = () => {
             >
               <div className="space-y-2">
                 <div className="flex items-center space-x-2 text-red-600 dark:text-red-500">
-                  {contact.type === "hospital" ? (
-                    <HeartPulse className="w-5 h-5" />
-                  ) : contact.type === "security" ? (
-                    <Shield className="w-5 h-5" />
-                  ) : (
-                    <AlertOctagon className="w-5 h-5" />
-                  )}
+                  <AlertOctagon className="w-5 h-5" />
                   <span className="text-[10px] font-black uppercase tracking-wider">
-                    {contact.role}
+                    {contact.type} Priority
                   </span>
                 </div>
                 
                 <div>
-                  <h4 className="text-sm font-black text-text-primary">{contact.name}</h4>
+                  <h4 className="text-sm font-black text-text-primary">{contact.name || contact.title}</h4>
                   <p className="text-xs text-text-secondary mt-0.5">{contact.phone}</p>
                 </div>
               </div>
 
               <button
-                onClick={() => handleDialSim(contact.name, contact.phone)}
+                onClick={() => handleDialSim(contact.name || contact.title, contact.phone)}
                 className="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-2 rounded-xl text-xs flex items-center justify-center space-x-1.5 cursor-pointer shadow-md shadow-red-600/10"
               >
                 <Phone className="w-3.5 h-3.5" />

@@ -1,11 +1,11 @@
-import { useState } from "react";
-import { documents as initialDocs } from "../../mocks/index";
+import { useState, useEffect } from "react";
+import { documents as initialDocuments } from "../../mocks/index";
 import { motion, AnimatePresence } from "framer-motion";
 import { Search, Folder, FileText, Download, Eye, X, CheckCircle } from "lucide-react";
 import { toast, Toaster } from "react-hot-toast";
 
 export const Documents = () => {
-  const [docsList] = useState(initialDocs);
+  const [docsList, setDocsList] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState("All");
   const [previewDoc, setPreviewDoc] = useState(null); // Selected document for PDF preview modal
@@ -13,10 +13,32 @@ export const Documents = () => {
 
   const categories = ["All", "Offer Letter", "Visa Information", "Insurance", "Internship Letter"];
 
+  const fetchDocs = async () => {
+    try {
+      const res = await fetch("http://localhost:5000/api/intern/documents", {
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const safeData = Array.isArray(data) ? data : [];
+        // Always show whatever DB returns (even empty); don't use mock data
+        setDocsList(safeData);
+      } else {
+        setDocsList([]);
+      }
+    } catch (err) { 
+      console.error(err);
+      setDocsList([]);
+    }
+  };
+
+  useEffect(() => {
+    fetchDocs();
+  }, []);
+
   const filteredDocs = docsList.filter((doc) => {
-    const matchesSearch = doc.name.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory = activeCategory === "All" || doc.category === activeCategory;
-    return matchesSearch && matchesCategory;
+    const matchesSearch = doc.title.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesSearch;
   });
 
   const handlePreview = (doc) => {
@@ -78,10 +100,10 @@ export const Documents = () => {
 
       {/* Documents Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        {filteredDocs.map((doc) => (
+        {filteredDocs.map((doc, idx) => (
           <motion.div
-            key={doc.id}
-            layoutId={`doc-card-${doc.id}`}
+            key={doc._id || idx}
+            layoutId={`doc-card-${doc._id || idx}`}
             className="bg-card border border-border rounded-2xl p-5 shadow-card flex flex-col justify-between h-48 hover-lift"
           >
             <div className="space-y-3">
@@ -90,16 +112,16 @@ export const Documents = () => {
               </div>
               <div>
                 <h4 className="text-xs font-bold text-text-primary line-clamp-2 leading-snug">
-                  {doc.name}
+                  {doc.title}
                 </h4>
                 <p className="text-[10px] text-text-secondary mt-1 uppercase font-semibold">
-                  {doc.category}
+                  {doc.category || "Official Document"}
                 </p>
               </div>
             </div>
 
             <div className="flex justify-between items-center pt-3 border-t border-border mt-4 text-[10px] text-text-secondary font-semibold shrink-0">
-              <span>{doc.size}</span>
+              <span>{doc.createdAt ? new Date(doc.createdAt).toLocaleDateString() : "—"}</span>
               <div className="flex items-center space-x-2">
                 <button
                   onClick={() => handlePreview(doc)}
@@ -109,7 +131,7 @@ export const Documents = () => {
                   <Eye className="w-4 h-4" />
                 </button>
                 <button
-                  onClick={() => handleDownload(doc.name)}
+                  onClick={() => handleDownload(doc.title)}
                   className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800 text-[#04376C] dark:text-[#1E6FD9] cursor-pointer"
                   title="Download document"
                 >
@@ -122,7 +144,9 @@ export const Documents = () => {
 
         {filteredDocs.length === 0 && (
           <div className="col-span-full text-center py-16 text-xs text-text-secondary border-2 border-dashed border-border rounded-2xl">
-            No matching documents found
+            <FileText className="w-10 h-10 mx-auto mb-3 opacity-20" />
+            <p className="font-bold">No documents have been assigned to you yet.</p>
+            <p className="mt-1 opacity-70">Your admin will upload relevant documents here soon.</p>
           </div>
         )}
       </div>
@@ -150,7 +174,7 @@ export const Documents = () => {
               <div className="flex justify-between items-center pb-3 border-b border-slate-800">
                 <div className="flex items-center space-x-2">
                   <FileText className="w-5 h-5 text-[#1E6FD9]" />
-                  <span className="text-xs font-bold text-white max-w-sm truncate">{previewDoc.name}</span>
+                  <span className="text-xs font-bold text-white max-w-sm truncate">{previewDoc.title}</span>
                 </div>
                 <button
                   onClick={() => setPreviewDoc(null)}
@@ -173,12 +197,14 @@ export const Documents = () => {
                       SIMULATED PDF PREVIEW - PAGE 1
                     </div>
                     <p className="leading-relaxed whitespace-pre-wrap">
-                      {previewDoc.previewUrl}
+                      URL: {previewDoc.fileUrl}
+                      <br /><br />
+                      Description: {previewDoc.description || "N/A"}
                     </p>
                     <div className="h-px bg-slate-900 my-4"></div>
                     <div className="text-[10px] text-slate-600 flex justify-between">
                       <span>IAESTE SEP Jaipur Node</span>
-                      <span>Verified: {previewDoc.date}</span>
+                      <span>Verified: {new Date(previewDoc.createdAt).toLocaleDateString()}</span>
                     </div>
                   </div>
                 )}
@@ -188,7 +214,7 @@ export const Documents = () => {
               <div className="flex justify-between items-center pt-3 border-t border-slate-800 text-xs text-slate-400 shrink-0">
                 <span>Page 1 of 1</span>
                 <button
-                  onClick={() => handleDownload(previewDoc.name)}
+                  onClick={() => handleDownload(previewDoc.title)}
                   className="inline-flex items-center space-x-2 bg-[#1E6FD9] hover:bg-[#1E6FD9]/95 text-white font-bold px-4 py-2 rounded-xl text-xs"
                 >
                   <Download className="w-3.5 h-3.5" />

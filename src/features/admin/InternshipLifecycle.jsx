@@ -24,8 +24,31 @@ const STAGES = [
 ];
 
 export const InternshipLifecycle = () => {
-  const [interns, setInterns] = useState(internDirectory);
-  const [selectedIntern, setSelectedIntern] = useState(internDirectory[0]);
+  const [interns, setInterns] = useState([]);
+  const [selectedIntern, setSelectedIntern] = useState(null);
+
+  React.useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        const response = await fetch("http://localhost:5000/api/admin/users", {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`
+          }
+        });
+        const data = await response.json();
+        if (response.ok) {
+          const dbInterns = data.interns.map(i => ({ ...i, id: i._id, status: i.status || "Application Received" }));
+          setInterns(dbInterns);
+          if (dbInterns.length > 0) {
+            setSelectedIntern(dbInterns[0]);
+          }
+        }
+      } catch (err) {
+        toast.error("Failed to fetch lifecycle data");
+      }
+    };
+    fetchUsers();
+  }, []);
 
   const handleStageChange = (direction) => {
     const currentIndex = STAGES.indexOf(selectedIntern.status);
@@ -58,7 +81,16 @@ export const InternshipLifecycle = () => {
     setSelectedIntern(student);
   };
 
-  const currentStageIndex = STAGES.indexOf(selectedIntern.status);
+  const currentStageIndex = selectedIntern ? STAGES.indexOf(selectedIntern.status) : 0;
+
+  if (!selectedIntern) {
+    return (
+      <div className="space-y-6 text-foreground pb-12">
+        <h1 className="text-xl sm:text-2xl font-black text-text-primary">Internship Lifecycle Management</h1>
+        <div className="text-text-secondary italic">No interns registered yet.</div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 text-foreground pb-12">

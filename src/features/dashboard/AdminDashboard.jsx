@@ -19,24 +19,45 @@ import {
   TrendingUp,
   History
 } from "lucide-react";
-import { internDirectory, auditLogs, events, logbookReviews } from "../../mocks/index";
+import { auditLogs, events, logbookReviews } from "../../mocks/index";
 
 export const AdminDashboard = () => {
   const { user } = useAuthStore();
   const navigate = useNavigate();
 
-  // Metrics calculating from mock collections
-  const totalStudents = internDirectory.length;
-  const activeStudents = internDirectory.filter(i => i.status !== "Completed" && i.status !== "Alumni").length;
-  const countriesCount = new Set(internDirectory.map(i => i.country)).size;
+  const [interns, setInterns] = React.useState([]);
+  const [facultyCount, setFacultyCount] = React.useState(0);
+
+  React.useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        const res = await fetch("http://localhost:5000/api/admin/users", {
+          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
+        });
+        const data = await res.json();
+        if (res.ok) {
+          setInterns(data.interns.map(i => ({ ...i, id: i._id })));
+          setFacultyCount(data.faculties.length);
+        }
+      } catch (err) {
+        console.error("Failed to load dashboard data");
+      }
+    };
+    fetchUsers();
+  }, []);
+
+  // Metrics calculating from DB collections
+  const totalStudents = interns.length;
+  const activeStudents = interns.filter(i => i.status !== "Completed" && i.status !== "Alumni").length;
+  const countriesCount = new Set(interns.map(i => i.country)).size;
   const pendingReviewsCount = logbookReviews.filter(r => r.status === "Pending").length;
 
   const stats = [
     { label: "Total Interns", value: totalStudents.toString(), icon: Users, trend: "Registrations", trendUp: true },
     { label: "Active Exchange", value: activeStudents.toString(), icon: Activity, trend: "Currently in lab", trendUp: true },
-    { label: "Faculty Supervisors", value: "3", icon: UserCheck, trend: "Approved staff", trendUp: true },
+    { label: "Faculty Supervisors", value: facultyCount.toString(), icon: UserCheck, trend: "Approved staff", trendUp: true },
     { label: "Countries Represented", value: countriesCount.toString(), icon: Globe, trend: "Global program", trendUp: true },
-    { label: "Ongoing Projects", value: "3", icon: FolderKanban, trend: "Trackers active", trendUp: true },
+    { label: "Ongoing Projects", value: activeStudents.toString(), icon: FolderKanban, trend: "Trackers active", trendUp: true },
     { label: "Pending Approvals", value: pendingReviewsCount.toString(), icon: Clock, trend: "Awaiting review", trendUp: false }
   ];
 
@@ -115,6 +136,20 @@ export const AdminDashboard = () => {
                 <span className="text-[10px] text-text-primary">Hostel Allocation</span>
               </Button>
             </div>
+            <div className="mt-4 flex justify-end">
+              <Button onClick={async () => {
+                try {
+                  const res = await fetch("http://localhost:5000/api/admin/seed", {
+                    method: "POST",
+                    headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
+                  });
+                  if (res.ok) alert("Data seeded to MongoDB successfully!");
+                  else alert("Failed to seed data. Make sure an Intern and Admin exist.");
+                } catch(e) { alert("Error seeding"); }
+              }} size="sm" className="bg-orange-600 hover:bg-orange-700 text-white font-bold text-xs">
+                Force Seed Dummy Data
+              </Button>
+            </div>
           </motion.div>
 
           {/* Roster Snap Grid */}
@@ -138,7 +173,7 @@ export const AdminDashboard = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
-                  {internDirectory.slice(0, 4).map((stud) => (
+                  {interns.slice(0, 4).map((stud) => (
                     <tr key={stud.id} className="hover:bg-slate-50/50">
                       <td className="py-3 font-bold text-text-primary">{stud.name}</td>
                       <td className="py-3 text-text-secondary font-semibold">{stud.country}</td>
@@ -148,6 +183,11 @@ export const AdminDashboard = () => {
                       </td>
                     </tr>
                   ))}
+                  {interns.length === 0 && (
+                    <tr>
+                      <td colSpan="4" className="py-4 text-center text-text-secondary italic">No interns registered yet.</td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>

@@ -26,12 +26,9 @@ export const Dashboard = () => {
   const completedTasks = tasks.filter((t) => t.status === "completed").length;
 
   // Calculation for progress
-  const start = new Date(internProfile.startDate);
-  const end = new Date(internProfile.endDate);
-  const today = new Date();
-  const totalDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
-  const elapsedDays = Math.min(totalDays, Math.max(0, Math.ceil((today - start) / (1000 * 60 * 60 * 24))));
-  const progressPercent = Math.round((elapsedDays / totalDays) * 100);
+  const progressPercent = user?.progress || 0;
+  const totalDays = 90; // Standard 3-month duration
+  const elapsedDays = Math.round((progressPercent / 100) * totalDays);
 
 
 
@@ -73,7 +70,7 @@ export const Dashboard = () => {
             Welcome back, {user?.name}! 👋
           </h1>
           <p className="text-sm text-text-secondary max-w-xl">
-            You are currently representing <span className="font-bold text-text-primary">{internProfile.country}</span> from <span className="font-bold text-text-primary">{internProfile.university}</span> at JECRC University, Jaipur.
+            You are currently representing <span className="font-bold text-text-primary">{user?.country || internProfile.country}</span> from <span className="font-bold text-text-primary">{user?.university || internProfile.university}</span> at JECRC University, Jaipur.
           </p>
           <div className="flex flex-wrap gap-4 text-xs font-medium text-text-secondary pt-2">
             <div className="flex items-center space-x-1">
@@ -83,7 +80,7 @@ export const Dashboard = () => {
             <div className="w-1 bg-border h-4 hidden sm:block"></div>
             <div className="flex items-center space-x-1">
               <User className="w-3.5 h-3.5" />
-              <span>Supervisor: {internProfile.supervisor}</span>
+              <span>Supervisor: {user?.supervisor || internProfile.supervisor}</span>
             </div>
           </div>
         </div>

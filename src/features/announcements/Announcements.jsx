@@ -1,32 +1,50 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { announcements as initialAnnouncements } from "../../mocks/index";
 import { motion, AnimatePresence } from "framer-motion";
 import { Megaphone, Search, Pin, AlertCircle, X, ChevronRight } from "lucide-react";
 
 export const Announcements = () => {
-  const [announcementsList] = useState(initialAnnouncements);
+  const [announcementsList, setAnnouncementsList] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState("All");
   const [selectedAnnounce, setSelectedAnnounce] = useState(null);
 
-  const categories = ["All", "Urgent", "Academic", "Logistics", "Social"];
+  const categories = ["All", "high", "medium", "low"];
+
+  const fetchAnnouncements = async () => {
+    try {
+      const res = await fetch("http://localhost:5000/api/intern/announcements", {
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data)) {
+          setAnnouncementsList(data);
+        } else {
+          setAnnouncementsList([]);
+        }
+      }
+    } catch (err) { console.error(err); }
+  };
+
+  React.useEffect(() => {
+    fetchAnnouncements();
+  }, []);
 
   // Filtering logic
   const filteredAnnouncements = announcementsList.filter((announce) => {
-    const matchesSearch =
-      announce.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      announce.message.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      announce.author.toLowerCase().includes(searchQuery.toLowerCase());
-
-    const matchesCategory =
-      activeCategory === "All" || announce.category === activeCategory;
+    const titleMatch = announce.title?.toLowerCase().includes(searchQuery.toLowerCase());
+    const contentMatch = announce.message?.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    const matchesSearch = titleMatch || contentMatch;
+    const matchesCategory = activeCategory === "All" || announce.priority === activeCategory;
 
     return matchesSearch && matchesCategory;
   });
 
-  // Split into pinned and unpinned
-  const pinnedAnnouncements = filteredAnnouncements.filter((a) => a.pinned);
-  const regularAnnouncements = filteredAnnouncements.filter((a) => !a.pinned);
+  // Split into pinned and unpinned (using high priority as pinned for now)
+  const pinnedAnnouncements = filteredAnnouncements.filter((a) => a.priority === "high");
+  const regularAnnouncements = filteredAnnouncements.filter((a) => a.priority !== "high");
 
   return (
     <div className="space-y-6 text-foreground pb-12">
@@ -81,7 +99,7 @@ export const Announcements = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {pinnedAnnouncements.map((announce) => (
               <motion.div
-                key={announce.id}
+                key={announce._id}
                 onClick={() => setSelectedAnnounce(announce)}
                 className="bg-amber-500/5 border border-amber-500/30 rounded-2xl p-5 hover-lift cursor-pointer space-y-3 relative overflow-hidden"
               >
@@ -90,14 +108,14 @@ export const Announcements = () => {
                   <span className="text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded uppercase">
                     PINNED URGENT
                   </span>
-                  <span className="text-text-secondary">{announce.date}</span>
+                  <span className="text-text-secondary">{new Date(announce.createdAt).toLocaleDateString()}</span>
                 </div>
                 <h4 className="text-sm font-black text-text-primary">{announce.title}</h4>
                 <p className="text-xs text-text-secondary line-clamp-2 leading-relaxed">
                   {announce.message}
                 </p>
                 <div className="text-[10px] text-text-secondary font-medium pt-2 border-t border-border flex justify-between items-center">
-                  <span>Author: {announce.author}</span>
+                  <span>Author: {announce.adminId ? "Admin Team" : announce.facultyId?.name || "Faculty"}</span>
                   <span className="text-[#04376C] dark:text-[#1E6FD9] font-bold flex items-center">
                     Read Details <ChevronRight className="w-3 h-3 ml-0.5" />
                   </span>
@@ -117,24 +135,24 @@ export const Announcements = () => {
         <div className="space-y-3">
           {regularAnnouncements.map((announce) => (
             <motion.div
-              key={announce.id}
+              key={announce._id}
               onClick={() => setSelectedAnnounce(announce)}
               className="bg-card border border-border rounded-2xl p-5 hover-lift cursor-pointer flex justify-between items-start md:items-center gap-4 shadow-card"
             >
               <div className="min-w-0 space-y-1.5 flex-1">
                 <div className="flex flex-wrap items-center gap-2 text-[10px] font-bold text-text-secondary">
                   <span className={`px-2 py-0.5 rounded uppercase ${
-                    announce.category === "Urgent"
+                    announce.priority === "high"
                       ? "bg-red-500/10 text-red-500"
-                      : announce.category === "Academic"
+                      : announce.priority === "medium"
                       ? "bg-blue-500/10 text-blue-500"
                       : "bg-slate-100 dark:bg-slate-800 text-text-secondary"
                   }`}>
-                    {announce.category}
+                    {announce.priority}
                   </span>
-                  <span>{announce.date}</span>
+                  <span>{new Date(announce.createdAt).toLocaleDateString()}</span>
                   <span>•</span>
-                  <span>By: {announce.author}</span>
+                  <span>By: {announce.adminId ? "Admin Team" : announce.facultyId?.name || "Faculty"}</span>
                 </div>
                 <h4 className="text-sm font-black text-text-primary truncate">{announce.title}</h4>
                 <p className="text-xs text-text-secondary line-clamp-1 leading-relaxed">
@@ -175,9 +193,9 @@ export const Announcements = () => {
               <div className="flex justify-between items-start">
                 <div className="space-y-1">
                   <span className="text-[10px] bg-[#04376C]/10 dark:bg-[#1E6FD9]/20 text-[#04376C] dark:text-[#1E6FD9] px-2.5 py-0.5 rounded font-black uppercase">
-                    {selectedAnnounce.category} Update
+                    {selectedAnnounce.priority} Update
                   </span>
-                  <p className="text-[10px] text-text-secondary font-semibold">{selectedAnnounce.date}</p>
+                  <p className="text-[10px] text-text-secondary font-semibold">{new Date(selectedAnnounce.createdAt).toLocaleDateString()}</p>
                 </div>
                 <button
                   onClick={() => setSelectedAnnounce(null)}
@@ -197,7 +215,7 @@ export const Announcements = () => {
               </div>
 
               <div className="bg-slate-50 dark:bg-slate-900/30 p-3.5 rounded-xl border border-border flex justify-between items-center text-[10px] text-text-secondary font-semibold shrink-0">
-                <span>Published by: {selectedAnnounce.author}</span>
+                <span>Published by: {selectedAnnounce.adminId ? "Admin Team" : selectedAnnounce.facultyId?.name || "Faculty"}</span>
                 <span className="text-green-500 flex items-center">
                   Official Notification
                 </span>

@@ -1,59 +1,85 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { internProfile } from "../../mocks/index";
 import { motion, AnimatePresence } from "framer-motion";
 import { Calendar, User, BookOpen, AlertCircle, CheckCircle, Clock } from "lucide-react";
 import { toast, Toaster } from "react-hot-toast";
 
+import { useAuthStore } from "../../store/useAuthStore";
+
 export const MyInternship = () => {
-  // Logbook local states
-  const [logs, setLogs] = useState([
-    {
-      week: 2,
-      workDone: "Configured ESP32 and calibrated the turbidity sensors under various light levels. Structured SQL database tables for reading logs.",
-      challenges: "Intermittent WiFi connectivity in the lab causing data packet loss.",
-      learnings: "Learned standard calibration methodologies for water sensors and Python database scripts.",
-      goals: "Establish a smooth wireless stream to the dashboard prototype.",
-      date: "2026-06-12",
-    },
-    {
-      week: 1,
-      workDone: "Orientation, completed literature review on recent water quality systems. Set up the development workspace.",
-      challenges: "Getting adjusted to hot weather in Jaipur and local transport systems.",
-      learnings: "Acquired a good understanding of India's UPI payments and campus layouts.",
-      goals: "Complete literature report and set up IoT hardware sensors.",
-      date: "2026-06-05",
-    }
-  ]);
+  const { user } = useAuthStore();
+  const [logs, setLogs] = useState([]);
+  const [faculties, setFaculties] = useState([]);
+  const fetchLogs = async () => {
+    try {
+      const headers = { Authorization: `Bearer ${localStorage.getItem("token")}` };
+      const [logRes, facRes] = await Promise.all([
+        fetch("http://localhost:5000/api/intern/logbooks", { headers }),
+        fetch("http://localhost:5000/api/intern/faculty", { headers })
+      ]);
+      if (logRes.ok) {
+        const data = await logRes.json();
+        if (Array.isArray(data)) {
+          setLogs(data.sort((a,b) => b.week - a.week));
+        } else {
+          setLogs([]);
+        }
+      }
+      if (facRes.ok) {
+        setFaculties(await facRes.json());
+      }
+      // If intern has no access to admin users, we'll gracefully fail and use user.assignedFaculty
+    } catch (err) { console.error(err); }
+  };
+
+  React.useEffect(() => {
+    fetchLogs();
+  }, []);
 
   const [weekInput, setWeekInput] = useState(3);
   const [workDone, setWorkDone] = useState("");
   const [challenges, setChallenges] = useState("");
   const [learnings, setLearnings] = useState("");
   const [goals, setGoals] = useState("");
+  const [selectedFacultyId, setSelectedFacultyId] = useState(user?.assignedFaculty || "");
 
-  const handleAddLog = (e) => {
+  const handleAddLog = async (e) => {
     e.preventDefault();
-    if (!workDone || !learnings || !goals) {
-      toast.error("Please fill in Work Done, Learnings, and Goals fields.");
+    if (!workDone || !learnings || !goals || !selectedFacultyId) {
+      toast.error("Please fill in Work Done, Learnings, Goals, and select your Supervisor.");
       return;
     }
 
-    const newLog = {
-      week: Number(weekInput),
-      workDone,
-      challenges: challenges || "None",
-      learnings,
-      goals,
-      date: new Date().toISOString().split("T")[0],
-    };
-
-    setLogs([newLog, ...logs]);
-    toast.success(`Weekly Logbook for Week ${weekInput} submitted successfully!`);
-    setWeekInput(weekInput + 1);
-    setWorkDone("");
-    setChallenges("");
-    setLearnings("");
-    setGoals("");
+    try {
+      const res = await fetch("http://localhost:5000/api/intern/logbooks", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token")}`
+        },
+        body: JSON.stringify({
+          week: Number(weekInput),
+          workDone,
+          challenges: challenges || "None",
+          nextWeekPlan: goals,
+          facultyId: selectedFacultyId
+        })
+      });
+      
+      if (res.ok) {
+        fetchLogs();
+        toast.success(`Weekly Logbook for Week ${weekInput} submitted successfully!`);
+        setWeekInput(weekInput + 1);
+        setWorkDone("");
+        setChallenges("");
+        setLearnings("");
+        setGoals("");
+      } else {
+        toast.error("Failed to submit logbook");
+      }
+    } catch (err) {
+      toast.error("Error submitting logbook");
+    }
   };
 
   // Timeline Milestones
@@ -79,7 +105,7 @@ export const MyInternship = () => {
             Research Internship Project
           </h2>
           <h1 className="text-xl sm:text-2xl font-black text-text-primary leading-snug">
-            {internProfile.projectTitle}
+            {user?.projectTitle || "Undergraduate Research Exchange"}
           </h1>
           <div className="h-px bg-border my-2"></div>
           
@@ -88,14 +114,14 @@ export const MyInternship = () => {
               <BookOpen className="w-4 h-4 text-[#04376C] dark:text-[#1E6FD9]" />
               <div>
                 <p className="text-[10px] text-text-secondary uppercase font-bold">Department</p>
-                <p className="font-semibold text-text-primary">{internProfile.department}</p>
+                <p className="font-semibold text-text-primary">{user?.department || "N/A"}</p>
               </div>
             </div>
             <div className="flex items-center space-x-3 text-text-secondary">
               <User className="w-4 h-4 text-blue-500" />
               <div>
                 <p className="text-[10px] text-text-secondary uppercase font-bold">Supervisor Faculty</p>
-                <p className="font-semibold text-text-primary">{internProfile.supervisor}</p>
+                <p className="font-semibold text-text-primary">Assigned Supervisor</p>
               </div>
             </div>
             <div className="flex items-center space-x-3 text-text-secondary">
@@ -103,7 +129,7 @@ export const MyInternship = () => {
               <div>
                 <p className="text-[10px] text-text-secondary uppercase font-bold">Duration Dates</p>
                 <p className="font-semibold text-text-primary">
-                  {internProfile.startDate} to {internProfile.endDate}
+                  {user?.createdAt ? new Date(user.createdAt).toLocaleDateString() : "TBD"} to Present
                 </p>
               </div>
             </div>
@@ -176,6 +202,21 @@ export const MyInternship = () => {
                 onChange={(e) => setWeekInput(e.target.value)}
                 className="w-full bg-[#F5F7FA] dark:bg-slate-800/50 border border-border rounded-xl px-3 py-2 text-xs text-text-primary outline-none focus:border-[#04376C] dark:focus:border-[#1E6FD9]"
               />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-[10px] uppercase font-bold text-text-secondary">Supervisor Faculty</label>
+              <select
+                required
+                value={selectedFacultyId}
+                onChange={(e) => setSelectedFacultyId(e.target.value)}
+                className="w-full bg-[#F5F7FA] dark:bg-slate-800/50 border border-border rounded-xl px-3 py-2 text-xs text-text-primary outline-none focus:border-[#04376C] dark:focus:border-[#1E6FD9] font-bold"
+              >
+                <option value="">Select your assigned supervisor</option>
+                {faculties.map((f) => (
+                  <option key={f._id} value={f._id}>{f.name} ({f.department})</option>
+                ))}
+              </select>
             </div>
             
             <div className="space-y-1">
@@ -251,10 +292,18 @@ export const MyInternship = () => {
                       WEEK {log.week} REPORT
                     </span>
                     <span className="text-[10px] text-text-secondary font-medium">
-                      Submitted: {log.date}
+                      Submitted: {new Date(log.submittedOn || log.createdAt).toLocaleDateString()}
                     </span>
                   </div>
                   
+                  {log.status === "Approved" ? (
+                    <div className="bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-400 p-2 rounded-lg text-[10px] font-bold uppercase mb-2">Approved by Supervisor</div>
+                  ) : log.status === "Changes Requested" || log.status === "Rejected" ? (
+                    <div className="bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-400 p-2 rounded-lg text-[10px] font-bold uppercase mb-2">Changes Requested</div>
+                  ) : (
+                    <div className="bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400 p-2 rounded-lg text-[10px] font-bold uppercase mb-2">Pending Review</div>
+                  )}
+
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
                     <div className="space-y-0.5">
                       <p className="text-[9px] font-black uppercase text-[#04376C] dark:text-[#1E6FD9]">Work Done</p>
@@ -265,12 +314,12 @@ export const MyInternship = () => {
                       <p className="text-text-secondary leading-relaxed">{log.challenges}</p>
                     </div>
                     <div className="space-y-0.5">
-                      <p className="text-[9px] font-black uppercase text-green-500">Key Learnings</p>
-                      <p className="text-text-secondary leading-relaxed">{log.learnings}</p>
+                      <p className="text-[9px] font-black uppercase text-green-500">Supervisor Feedback</p>
+                      <p className="text-text-secondary leading-relaxed">{log.facultyFeedback || "None yet"}</p>
                     </div>
                     <div className="space-y-0.5">
                       <p className="text-[9px] font-black uppercase text-blue-500">Next Week's Goals</p>
-                      <p className="text-text-secondary leading-relaxed">{log.goals}</p>
+                      <p className="text-text-secondary leading-relaxed">{log.nextWeekPlan}</p>
                     </div>
                   </div>
                 </motion.div>

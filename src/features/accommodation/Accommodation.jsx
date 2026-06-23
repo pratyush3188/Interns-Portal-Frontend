@@ -1,12 +1,25 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { accommodation as initialAccommodation } from "../../mocks/index";
 import { motion, AnimatePresence } from "framer-motion";
-import { Home, Wifi, Clock, ShieldAlert, Plus, X, CheckCircle, Clock3 } from "lucide-react";
+import { Home, Wifi, Clock, ShieldAlert, Plus, X, CheckCircle, Clock3, Calendar } from "lucide-react";
 import { toast, Toaster } from "react-hot-toast";
 
 export const Accommodation = () => {
   const [tickets, setTickets] = useState(initialAccommodation.tickets);
   const [showModal, setShowModal] = useState(false);
+  const [myAccommodation, setMyAccommodation] = useState(null);
+
+  useEffect(() => {
+    const fetchAcc = async () => {
+      try {
+        const res = await fetch("http://localhost:5000/api/intern/accommodation", {
+          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
+        });
+        if (res.ok) setMyAccommodation(await res.json());
+      } catch (err) { console.error(err); }
+    };
+    fetchAcc();
+  }, []);
 
   // Form states
   const [ticketCategory, setTicketCategory] = useState("WiFi");
@@ -60,16 +73,26 @@ export const Accommodation = () => {
           <div className="space-y-2 text-xs font-semibold text-text-secondary bg-slate-50 dark:bg-slate-900/30 p-4 rounded-xl border border-border">
             <div>
               <p className="text-[9px] uppercase text-text-secondary">Hostel Residence</p>
-              <p className="text-text-primary font-bold mt-0.5">{initialAccommodation.hostelName}</p>
+              <p className="text-text-primary font-bold mt-0.5">{myAccommodation?.allottedRoom ? "JECRC Main Hostel" : "Pending Assignment"}</p>
             </div>
             <div className="grid grid-cols-2 gap-4 mt-2">
               <div>
                 <p className="text-[9px] uppercase text-text-secondary">Room Number</p>
-                <p className="text-text-primary font-bold mt-0.5">{initialAccommodation.roomNumber}</p>
+                <p className="text-text-primary font-bold mt-0.5">{myAccommodation?.allottedRoom || "N/A"}</p>
               </div>
               <div>
                 <p className="text-[9px] uppercase text-text-secondary">WiFi SSid</p>
                 <p className="text-text-primary font-bold mt-0.5">{initialAccommodation.wifiSsid}</p>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4 mt-2 border-t border-border pt-2">
+              <div>
+                <p className="text-[9px] uppercase text-text-secondary">Start Date</p>
+                <p className="text-text-primary font-bold mt-0.5">{myAccommodation?.startDate ? new Date(myAccommodation.startDate).toLocaleDateString() : "N/A"}</p>
+              </div>
+              <div>
+                <p className="text-[9px] uppercase text-text-secondary">End Date</p>
+                <p className="text-text-primary font-bold mt-0.5">{myAccommodation?.endDate ? new Date(myAccommodation.endDate).toLocaleDateString() : "N/A"}</p>
               </div>
             </div>
           </div>

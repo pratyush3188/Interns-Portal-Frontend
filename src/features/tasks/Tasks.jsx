@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { tasks as initialTasks } from "../../mocks/index";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -18,10 +18,30 @@ import {
 import { toast, Toaster } from "react-hot-toast";
 
 export const Tasks = () => {
-  const [tasksList, setTasksList] = useState(initialTasks);
+  const [tasksList, setTasksList] = useState([]);
   const [viewMode, setViewMode] = useState("kanban"); // "kanban" or "table"
   const [selectedTask, setSelectedTask] = useState(null); // Task object for detail drawer
   const [newComment, setNewComment] = useState("");
+
+  const fetchTasks = async () => {
+    try {
+      const res = await fetch("http://localhost:5000/api/intern/tasks", {
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data)) {
+          setTasksList(data.map(d => ({ ...d, id: d._id })));
+        } else {
+          setTasksList([]);
+        }
+      }
+    } catch (err) { console.error(err); }
+  };
+
+  React.useEffect(() => {
+    fetchTasks();
+  }, []);
 
   // Kanban Columns
   const columns = [
@@ -32,34 +52,51 @@ export const Tasks = () => {
   ];
 
   // Move task to another column
-  const moveTask = (taskId, targetStatus) => {
-    setTasksList(
-      tasksList.map((t) => (t.id === taskId ? { ...t, status: targetStatus } : t))
-    );
-    // If current selected task is open in drawer, update it too
-    if (selectedTask && selectedTask.id === taskId) {
-      setSelectedTask({ ...selectedTask, status: targetStatus });
-    }
-    toast.success("Task status updated!");
+  const moveTask = async (taskId, targetStatus) => {
+    try {
+      const res = await fetch(`http://localhost:5000/api/intern/tasks/${taskId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token")}`
+        },
+        body: JSON.stringify({ status: targetStatus })
+      });
+      if (res.ok) {
+        fetchTasks();
+        if (selectedTask && selectedTask.id === taskId) {
+          setSelectedTask({ ...selectedTask, status: targetStatus });
+        }
+        toast.success("Task status updated!");
+      }
+    } catch (err) { toast.error("Error updating status"); }
   };
 
   // Add Comment
-  const handleAddComment = (e) => {
+  const handleAddComment = async (e) => {
     e.preventDefault();
-    if (!newComment.trim()) return;
+    if (!newComment.trim() || !selectedTask) return;
 
-    const updatedTask = {
-      ...selectedTask,
-      comments: [
-        ...selectedTask.comments,
-        { author: "Sophia Müller", text: newComment, date: "Just now" }
-      ]
-    };
-
-    setTasksList(tasksList.map((t) => (t.id === selectedTask.id ? updatedTask : t)));
-    setSelectedTask(updatedTask);
-    setNewComment("");
-    toast.success("Comment added!");
+    try {
+      const updatedComments = [
+        ...(selectedTask.comments || []),
+        { author: "intern", text: newComment, createdAt: new Date() }
+      ];
+      const res = await fetch(`http://localhost:5000/api/intern/tasks/${selectedTask.id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token")}`
+        },
+        body: JSON.stringify({ comments: updatedComments })
+      });
+      if (res.ok) {
+        fetchTasks();
+        setSelectedTask({ ...selectedTask, comments: updatedComments });
+        setNewComment("");
+        toast.success("Comment added!");
+      }
+    } catch (err) { toast.error("Error adding comment"); }
   };
 
   // Status indicators colors
@@ -151,7 +188,7 @@ export const Tasks = () => {
                           </span>
                           <span className="text-[9px] text-text-secondary flex items-center space-x-1">
                             <Clock className="w-3 h-3" />
-                            <span>{task.deadline}</span>
+                            <span>{task.dueDate ? new Date(task.dueDate).toLocaleDateString() : "No Deadline"}</span>
                           </span>
                         </div>
                         <h4 className="text-xs font-bold text-text-primary leading-snug">
@@ -162,23 +199,23 @@ export const Tasks = () => {
                         <div className="space-y-1">
                           <div className="flex justify-between text-[9px] text-text-secondary font-bold">
                             <span>Progress</span>
-                            <span>{task.progress}%</span>
+                            <span>{task.progress || 0}%</span>
                           </div>
                           <div className="w-full bg-slate-100 dark:bg-slate-800 h-1 rounded-full overflow-hidden">
-                            <div className="bg-[#04376C] dark:bg-[#1E6FD9] h-full" style={{ width: `${task.progress}%` }}></div>
+                            <div className="bg-[#04376C] dark:bg-[#1E6FD9] h-full" style={{ width: `${task.progress || 0}%` }}></div>
                           </div>
                         </div>
 
                         {/* Footer counts */}
                         <div className="flex justify-between items-center pt-2 border-t border-border text-text-secondary text-[10px] font-semibold">
                           <div className="flex items-center space-x-3">
-                            {task.attachments.length > 0 && (
+                            {task.attachments && task.attachments.length > 0 && (
                               <span className="flex items-center space-x-1">
                                 <Paperclip className="w-3 h-3" />
                                 <span>{task.attachments.length}</span>
                               </span>
                             )}
-                            {task.comments.length > 0 && (
+                            {task.comments && task.comments.length > 0 && (
                               <span className="flex items-center space-x-1">
                                 <MessageSquare className="w-3 h-3" />
                                 <span>{task.comments.length}</span>
@@ -250,7 +287,7 @@ export const Tasks = () => {
                         </span>
                       </td>
                       <td className="px-6 py-4 text-text-secondary font-semibold">
-                        {task.deadline}
+                        {task.dueDate ? new Date(task.dueDate).toLocaleDateString() : "N/A"}
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center space-x-2 w-32">
@@ -338,7 +375,7 @@ export const Tasks = () => {
                     </div>
                     <div>
                       <p className="text-[10px] text-text-secondary font-bold uppercase">Deadline</p>
-                      <span className="font-bold text-text-primary mt-1 inline-block">{selectedTask.deadline}</span>
+                      <span className="font-bold text-text-primary mt-1 inline-block">{selectedTask.dueDate ? new Date(selectedTask.dueDate).toLocaleDateString() : "None"}</span>
                     </div>
                     <div>
                       <p className="text-[10px] text-text-secondary font-bold uppercase">Status State</p>
@@ -376,7 +413,7 @@ export const Tasks = () => {
                   {/* Attachments Section */}
                   <div className="space-y-2">
                     <h4 className="text-xs font-bold text-text-primary uppercase tracking-wider">Attachments</h4>
-                    {selectedTask.attachments.length > 0 ? (
+                    {selectedTask.attachments && selectedTask.attachments.length > 0 ? (
                       <div className="space-y-1.5">
                         {selectedTask.attachments.map((file, idx) => (
                           <div key={idx} className="flex justify-between items-center p-3 bg-slate-50 dark:bg-slate-900/20 border border-border rounded-xl">
@@ -406,16 +443,16 @@ export const Tasks = () => {
                     <h4 className="text-xs font-bold text-text-primary uppercase tracking-wider">Comments Feed</h4>
                     
                     <div className="space-y-3 max-h-40 overflow-y-auto pr-1">
-                      {selectedTask.comments.map((comment, idx) => (
+                      {selectedTask.comments && selectedTask.comments.map((comment, idx) => (
                         <div key={idx} className="bg-slate-50 dark:bg-slate-900/30 border border-border rounded-xl p-3 space-y-1.5">
                           <div className="flex justify-between text-[10px]">
-                            <span className="font-extrabold text-text-primary">{comment.author}</span>
-                            <span className="text-text-secondary">{comment.date}</span>
+                            <span className="font-extrabold text-text-primary">{comment.author === "intern" ? "Me" : "Supervisor"}</span>
+                            <span className="text-text-secondary">{new Date(comment.createdAt).toLocaleString()}</span>
                           </div>
                           <p className="text-xs text-text-secondary leading-relaxed">{comment.text}</p>
                         </div>
                       ))}
-                      {selectedTask.comments.length === 0 && (
+                      {(!selectedTask.comments || selectedTask.comments.length === 0) && (
                         <p className="text-xs text-text-secondary italic">No comments yet. Write one below.</p>
                       )}
                     </div>

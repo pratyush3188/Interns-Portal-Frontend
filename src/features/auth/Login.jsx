@@ -31,8 +31,15 @@ export const Login = () => {
         auth: false,
         body: { email, password }
       });
-      setAuthSession({ token: data.token, user: data.user });
-      navigate('/dashboard');
+      setAuthSession({ token: data.token, user: data });
+      
+      if (data.role === 'admin') {
+        navigate('/admin/dashboard');
+      } else if (data.role === 'faculty') {
+        navigate('/faculty/dashboard');
+      } else {
+        navigate('/dashboard');
+      }
     } catch (err) {
       setError(err?.message || 'Login failed');
     } finally {

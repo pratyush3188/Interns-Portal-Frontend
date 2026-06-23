@@ -16,38 +16,53 @@ import {
 import { logbookReviews } from "../../mocks/index";
 
 export const LogbookReviews = () => {
-  const [reviews, setReviews] = useState(logbookReviews);
+  const [reviews, setReviews] = useState([]);
   const [activeTab, setActiveTab] = useState("Pending"); // "Pending", "Approved", "Rejected" / "Changes Requested"
   const [selectedReview, setSelectedReview] = useState(null);
   const [feedbackComment, setFeedbackComment] = useState("");
 
-  const handleAction = (reviewId, action) => {
+  const fetchReviews = async () => {
+    try {
+      const response = await fetch("http://localhost:5000/api/faculty/logbooks", {
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setReviews(data.map(d => ({ ...d, id: d._id })));
+      }
+    } catch (err) { console.error(err); }
+  };
+
+  React.useEffect(() => {
+    fetchReviews();
+  }, []);
+
+  const handleAction = async (reviewId, action) => {
     if (action !== "Approved" && !feedbackComment.trim()) {
       toast.error("Please add evaluation feedback comments first.");
       return;
     }
 
-    const updatedReviews = reviews.map((rev) => {
-      if (rev.id === reviewId) {
-        const commentEntry = {
-          date: new Date().toISOString().split("T")[0],
-          action: action,
-          reviewer: "Dr. Michael Schneider",
-          comment: feedbackComment || "Approved with no remarks."
-        };
-        return {
-          ...rev,
-          status: action,
-          history: [commentEntry, ...rev.history]
-        };
+    try {
+      const response = await fetch(`http://localhost:5000/api/faculty/logbooks/${reviewId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token")}`
+        },
+        body: JSON.stringify({ status: action, facultyFeedback: feedbackComment || "Approved with no remarks." })
+      });
+      if (response.ok) {
+        toast.success(`Submission successfully marked as: ${action}`);
+        fetchReviews();
+        setSelectedReview(null);
+        setFeedbackComment("");
+      } else {
+        toast.error("Failed to update logbook status");
       }
-      return rev;
-    });
-
-    setReviews(updatedReviews);
-    setSelectedReview(null);
-    setFeedbackComment("");
-    toast.success(`Submission successfully marked as: ${action}`);
+    } catch (err) {
+      toast.error("Error updating logbook");
+    }
   };
 
   const getStatusBadge = (status) => {
@@ -111,11 +126,11 @@ export const LogbookReviews = () => {
           <Card key={log.id} hoverEffect className="p-5 border border-border flex flex-col md:flex-row md:items-center justify-between gap-6">
             <div className="space-y-3 flex-1 min-w-0">
               <div className="flex items-center space-x-3 shrink-0">
-                <span className="text-xs font-extrabold text-text-primary">{log.student}</span>
+                <span className="text-xs font-extrabold text-text-primary">{log.internId?.name || "Unknown"}</span>
                 <span className="w-1.5 h-1.5 rounded-full bg-border"></span>
                 <span className="text-[10px] font-black text-blue-600 uppercase">Week {log.week} Report</span>
                 <span className="w-1.5 h-1.5 rounded-full bg-border"></span>
-                <span className="text-[10px] text-text-secondary">Submitted: {log.submittedOn}</span>
+                <span className="text-[10px] text-text-secondary">Submitted: {new Date(log.submittedOn).toLocaleDateString()}</span>
               </div>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs bg-slate-50 dark:bg-slate-900/30 p-3 rounded-xl border border-border">
@@ -124,8 +139,8 @@ export const LogbookReviews = () => {
                   <p className="text-text-secondary line-clamp-2">{log.workDone}</p>
                 </div>
                 <div>
-                  <span className="text-[9px] font-black text-amber-500 uppercase block mb-1">Key Learnings</span>
-                  <p className="text-text-secondary line-clamp-2">{log.learnings}</p>
+                  <span className="text-[9px] font-black text-amber-500 uppercase block mb-1">Next Week Plan</span>
+                  <p className="text-text-secondary line-clamp-2">{log.nextWeekPlan || "None"}</p>
                 </div>
               </div>
             </div>
@@ -169,7 +184,7 @@ export const LogbookReviews = () => {
                 <div className="flex items-center space-x-2">
                   <BookOpen className="w-5 h-5 text-blue-600" />
                   <div>
-                    <h3 className="text-sm font-black text-text-primary">Review: {selectedReview.student}</h3>
+                    <h3 className="text-sm font-black text-text-primary">Review: {selectedReview.internId?.name}</h3>
                     <p className="text-[9px] text-text-secondary font-bold uppercase tracking-wider">Week {selectedReview.week} Logbook Submission</p>
                   </div>
                 </div>
@@ -195,12 +210,12 @@ export const LogbookReviews = () => {
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <p className="font-extrabold text-green-500 text-[10px] uppercase">Key Learnings</p>
-                        <p className="text-text-secondary leading-relaxed mt-0.5">{selectedReview.learnings}</p>
+                        <p className="font-extrabold text-green-500 text-[10px] uppercase">Faculty Feedback</p>
+                        <p className="text-text-secondary leading-relaxed mt-0.5">{selectedReview.facultyFeedback || "None yet"}</p>
                       </div>
                       <div>
                         <p className="font-extrabold text-blue-500 text-[10px] uppercase">Goals for Next Week</p>
-                        <p className="text-text-secondary leading-relaxed mt-0.5">{selectedReview.goals}</p>
+                        <p className="text-text-secondary leading-relaxed mt-0.5">{selectedReview.nextWeekPlan || "None"}</p>
                       </div>
                     </div>
                   </div>
@@ -212,23 +227,21 @@ export const LogbookReviews = () => {
                     <History className="w-4 h-4" />
                     <span>Grading & Evaluation History</span>
                   </h4>
-                  {selectedReview.history.length > 0 ? (
+                  {selectedReview.facultyFeedback ? (
                     <div className="space-y-2">
-                      {selectedReview.history.map((hist, i) => (
-                        <div key={i} className="bg-slate-50 dark:bg-slate-900/10 border border-border rounded-xl p-3 flex items-start space-x-3">
+                        <div className="bg-slate-50 dark:bg-slate-900/10 border border-border rounded-xl p-3 flex items-start space-x-3">
                           <CornerDownRight className="w-4 h-4 text-text-secondary mt-0.5 shrink-0" />
                           <div className="space-y-1">
                             <div className="flex items-center space-x-2 text-[10px]">
-                              <span className="font-bold text-text-primary">{hist.reviewer}</span>
+                              <span className="font-bold text-text-primary">Supervisor</span>
                               <span className="w-1 h-1 bg-border rounded-full"></span>
-                              <span className="text-text-secondary">{hist.date}</span>
+                              <span className="text-text-secondary">{new Date(selectedReview.updatedAt).toLocaleDateString()}</span>
                               <span className="w-1 h-1 bg-border rounded-full"></span>
-                              <Badge variant={hist.action === "Approved" ? "success" : "warning"}>{hist.action}</Badge>
+                              <Badge variant={selectedReview.status === "Approved" ? "success" : "warning"}>{selectedReview.status}</Badge>
                             </div>
-                            <p className="text-text-secondary leading-relaxed font-medium">"{hist.comment}"</p>
+                            <p className="text-text-secondary leading-relaxed font-medium">"{selectedReview.facultyFeedback}"</p>
                           </div>
                         </div>
-                      ))}
                     </div>
                   ) : (
                     <p className="italic text-text-secondary">No prior comments or grading rounds logged.</p>

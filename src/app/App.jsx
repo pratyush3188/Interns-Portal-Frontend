@@ -14,6 +14,7 @@ const Dashboard = lazy(() => import("../features/dashboard/Dashboard").then(m =>
 const MyInternship = lazy(() => import("../features/internship/MyInternship").then(m => ({ default: m.MyInternship })));
 const Tasks = lazy(() => import("../features/tasks/Tasks").then(m => ({ default: m.Tasks })));
 const Calendar = lazy(() => import("../features/calendar/Calendar").then(m => ({ default: m.Calendar })));
+const Meetings = lazy(() => import("../features/calendar/Meetings").then(m => ({ default: m.Meetings })));
 const Events = lazy(() => import("../features/events/Events").then(m => ({ default: m.Events })));
 const Trips = lazy(() => import("../features/trips/Trips").then(m => ({ default: m.Trips })));
 const Announcements = lazy(() => import("../features/announcements/Announcements").then(m => ({ default: m.Announcements })));
@@ -40,6 +41,7 @@ const RosterManagement = lazy(() => import("../features/admin/RosterManagement")
 const InternshipLifecycle = lazy(() => import("../features/admin/InternshipLifecycle").then(m => ({ default: m.InternshipLifecycle })));
 const AccommodationManagement = lazy(() => import("../features/admin/AccommodationManagement").then(m => ({ default: m.AccommodationManagement })));
 const TravelTracking = lazy(() => import("../features/admin/TravelTracking").then(m => ({ default: m.TravelTracking })));
+const AdminTrips = lazy(() => import("../features/admin/AdminTrips").then(m => ({ default: m.AdminTrips })));
 const AdminEvents = lazy(() => import("../features/admin/EventsManagement").then(m => ({ default: m.EventsManagement })));
 const DocumentCenter = lazy(() => import("../features/admin/DocumentCenter").then(m => ({ default: m.DocumentCenter })));
 const AdminAnnouncementCenter = lazy(() => import("../features/announcements/AdminAnnouncementCenter").then(m => ({ default: m.AdminAnnouncementCenter })));
@@ -107,6 +109,7 @@ export const App = () => {
               <Route path="/internship" element={<MyInternship />} />
               <Route path="/tasks" element={<Tasks />} />
               <Route path="/calendar" element={<Calendar />} />
+              <Route path="/meetings" element={<Meetings />} />
               <Route path="/events" element={<Events />} />
               <Route path="/trips" element={<Trips />} />
               <Route path="/announcements" element={<Announcements />} />
@@ -137,6 +140,7 @@ export const App = () => {
               <Route path="/admin/lifecycle" element={<InternshipLifecycle />} />
               <Route path="/admin/accommodation" element={<AccommodationManagement />} />
               <Route path="/admin/travel" element={<TravelTracking />} />
+              <Route path="/admin/trips" element={<AdminTrips />} />
               <Route path="/admin/events" element={<AdminEvents />} />
               <Route path="/admin/documents" element={<DocumentCenter />} />
               <Route path="/admin/announcements" element={<AdminAnnouncementCenter />} />

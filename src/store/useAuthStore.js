@@ -38,10 +38,22 @@ export const defaultProfiles = {
   }
 };
 
-export const useAuthStore = create((set) => ({
-  user: defaultProfiles.intern, // Default is intern
-  isAuthenticated: true, // Auto-authenticate for immediate access
-  login: (user) => set({ user: user || defaultProfiles.intern, isAuthenticated: true }),
-  logout: () => set({ user: null, isAuthenticated: false }),
-}));
+import { persist } from "zustand/middleware";
+
+export const useAuthStore = create(
+  persist(
+    (set) => ({
+      user: null, 
+      isAuthenticated: false,
+      login: (user) => set({ user, isAuthenticated: true }),
+      logout: () => {
+        localStorage.removeItem("token");
+        set({ user: null, isAuthenticated: false });
+      },
+    }),
+    {
+      name: "auth-storage",
+    }
+  )
+);
 

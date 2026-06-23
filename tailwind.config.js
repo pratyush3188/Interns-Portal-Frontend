@@ -1,16 +1,16 @@
-import type { Config } from 'tailwindcss';
-import { colors } from './src/theme/colors';
-import { spacing } from './src/theme/spacing';
-import { typography } from './src/theme/typography';
-import { shadows } from './src/theme/shadows';
-import { breakpoints } from './src/theme/breakpoints';
+import { colors } from './src/theme/colors.js';
+import { spacing } from './src/theme/spacing.js';
+import { typography } from './src/theme/typography.js';
+import { shadows } from './src/theme/shadows.js';
+import { breakpoints } from './src/theme/breakpoints.js';
 
-const config: Config = {
+/** @type {import('tailwindcss').Config} */
+const config = {
   content: [
     "./index.html",
-    "./src/**/*.{js,ts,jsx,tsx}",
+    "./src/**/*.{js,jsx}",
   ],
-  darkMode: 'class', // Keeping this just in case, but we won't use dark variants in our components
+  darkMode: 'class',
   theme: {
     screens: breakpoints,
     extend: {
@@ -23,13 +23,10 @@ const config: Config = {
       },
       fontFamily: typography.fontFamily,
       boxShadow: shadows,
-      // We extend spacing rather than replacing it to keep standard Tailwind spacing available
       spacing: spacing,
     },
   },
-  plugins: [
-    require('tailwind-scrollbar-hide')
-  ],
+  plugins: [],
 };
 
 export default config;

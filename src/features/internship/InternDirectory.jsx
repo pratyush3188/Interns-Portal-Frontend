@@ -21,9 +21,10 @@ import {
   Clock,
   ChevronDown
 } from "lucide-react";
-import { internDirectory } from "../../mocks/index";
+import { internDirectory as mockInterns } from "../../mocks/index";
 
 export const InternDirectory = () => {
+  const [interns, setInterns] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCountry, setSelectedCountry] = useState("");
   const [selectedDept, setSelectedDept] = useState("");
@@ -33,16 +34,38 @@ export const InternDirectory = () => {
   const [sortOrder, setSortOrder] = useState("asc");
 
   // Unique filter values
-  const countries = [...new Set(internDirectory.map(i => i.country))];
-  const departments = [...new Set(internDirectory.map(i => i.department))];
-  const statuses = [...new Set(internDirectory.map(i => i.status))];
+  const countries = [...new Set(interns.map(i => i.country))];
+  const departments = [...new Set(interns.map(i => i.department))];
+  const statuses = [...new Set(interns.map(i => i.status))];
+
+  // Fetch interns on mount
+  React.useEffect(() => {
+    const fetchInterns = async () => {
+      try {
+        const response = await fetch("http://localhost:5000/api/faculty/interns", {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`
+          }
+        });
+        const data = await response.json();
+        if (response.ok) {
+          setInterns(data);
+        } else {
+          console.error("Failed to fetch interns:", data.message);
+        }
+      } catch (error) {
+        console.error("Error fetching interns:", error);
+      }
+    };
+    fetchInterns();
+  }, []);
 
   // Search & Filter Logic
-  const filteredInterns = internDirectory
+  const filteredInterns = interns
     .filter(intern => {
-      const matchesSearch = intern.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        intern.university.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        intern.projectTitle.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesSearch = (intern.name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (intern.university || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (intern.projectTitle || "").toLowerCase().includes(searchTerm.toLowerCase());
       
       const matchesCountry = selectedCountry === "" || intern.country === selectedCountry;
       const matchesDept = selectedDept === "" || intern.department === selectedDept;

@@ -19,55 +19,80 @@ import {
 import { meetings as initialMeetings } from "../../mocks/index";
 
 export const FacultyMeetings = () => {
-  const [meetingList, setMeetingList] = useState(initialMeetings);
+  const [meetingList, setMeetingList] = useState([]);
+  const [interns, setInterns] = useState([]);
   const [activeSegment, setActiveSegment] = useState("upcoming"); // "upcoming" or "completed"
   const [isScheduling, setIsScheduling] = useState(false);
   const [selectedMeeting, setSelectedMeeting] = useState(null);
 
+  const fetchData = async () => {
+    try {
+      const headers = { Authorization: `Bearer ${localStorage.getItem("token")}` };
+      const [meetRes, intRes] = await Promise.all([
+        fetch("http://localhost:5000/api/faculty/meetings", { headers }),
+        fetch("http://localhost:5000/api/faculty/interns", { headers })
+      ]);
+      if (meetRes.ok && intRes.ok) {
+        setMeetingList(await meetRes.json());
+        setInterns(await intRes.json());
+      }
+    } catch (err) { console.error(err); }
+  };
+
+  React.useEffect(() => {
+    fetchData();
+  }, []);
+
   // Form states
   const [meetTitle, setMeetTitle] = useState("");
-  const [meetStudent, setMeetStudent] = useState("Sophia Müller");
+  const [meetStudent, setMeetStudent] = useState("");
   const [meetDate, setMeetDate] = useState("");
   const [meetTime, setMeetTime] = useState("");
-  const [meetLink, setMeetLink] = useState("https://meet.google.com/abc-defg-hij");
+  const [meetLink, setMeetLink] = useState("");
   const [meetNotes, setMeetNotes] = useState("");
 
-  const handleSchedule = (e) => {
+  const handleSchedule = async (e) => {
     e.preventDefault();
-    if (!meetTitle.trim() || !meetDate || !meetTime) {
-      toast.error("Please fill in the title, date, and meeting time.");
+    if (!meetTitle.trim() || !meetDate || !meetTime || !meetStudent) {
+      toast.error("Please fill in the title, date, time, and select a student.");
       return;
     }
 
-    const newMeeting = {
-      id: `meet-${Date.now()}`,
-      title: meetTitle,
-      student: meetStudent,
-      date: meetDate,
-      time: meetTime,
-      status: "Upcoming",
-      gmeetLink: meetLink,
-      notes: meetNotes || "Weekly progress review sync.",
-      actionItems: [],
-      studentFeedback: ""
-    };
-
-    setMeetingList([newMeeting, ...meetingList]);
-    setIsScheduling(false);
-    
-    // Clear form
-    setMeetTitle("");
-    setMeetDate("");
-    setMeetTime("");
-    setMeetNotes("");
-    toast.success("Mentorship meeting successfully scheduled!");
+    try {
+      const res = await fetch("http://localhost:5000/api/faculty/meetings", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token")}`
+        },
+        body: JSON.stringify({
+          title: meetTitle,
+          date: meetDate,
+          time: meetTime,
+          meetingLink: meetLink,
+          agenda: meetNotes,
+          internId: meetStudent
+        })
+      });
+      if (res.ok) {
+        toast.success("Mentorship meeting successfully scheduled!");
+        fetchData();
+        setIsScheduling(false);
+        setMeetTitle("");
+        setMeetDate("");
+        setMeetTime("");
+        setMeetLink("");
+        setMeetNotes("");
+        setMeetStudent("");
+      }
+    } catch (err) { toast.error("Error scheduling meeting"); }
   };
 
   const getFilteredMeetings = () => {
     if (activeSegment === "upcoming") {
-      return meetingList.filter(m => m.status === "Upcoming");
+      return meetingList.filter(m => m.status === "scheduled" || m.status === "Upcoming");
     }
-    return meetingList.filter(m => m.status === "Completed");
+    return meetingList.filter(m => m.status === "completed" || m.status === "Completed");
   };
 
   const filtered = getFilteredMeetings();
@@ -100,7 +125,7 @@ export const FacultyMeetings = () => {
               : "text-text-secondary border-transparent hover:text-text-primary"
           }`}
         >
-          Upcoming Sessions ({meetingList.filter(m => m.status === "Upcoming").length})
+          Upcoming Sessions ({meetingList.filter(m => m.status === "scheduled" || m.status === "Upcoming").length})
         </button>
         <button
           onClick={() => setActiveSegment("completed")}
@@ -110,25 +135,25 @@ export const FacultyMeetings = () => {
               : "text-text-secondary border-transparent hover:text-text-primary"
           }`}
         >
-          Completed Archive ({meetingList.filter(m => m.status === "Completed").length})
+          Completed Archive ({meetingList.filter(m => m.status === "completed" || m.status === "Completed").length})
         </button>
       </div>
 
       {/* Meeting Cards List */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {filtered.map((meet) => (
-          <Card key={meet.id} hoverEffect className="p-5 border border-border flex flex-col justify-between space-y-4">
+          <Card key={meet._id} hoverEffect className="p-5 border border-border flex flex-col justify-between space-y-4">
             <div className="space-y-3">
               <div className="flex justify-between items-start">
                 <div>
                   <h4 className="text-sm font-bold text-text-primary">{meet.title}</h4>
                   <p className="text-[10px] text-text-secondary font-bold flex items-center space-x-1.5 mt-0.5">
                     <User className="w-3.5 h-3.5 text-text-secondary" />
-                    <span>Candidate: {meet.student}</span>
+                    <span>Candidate: {meet.internId?.name || "Intern"}</span>
                   </p>
                 </div>
-                <Badge variant={meet.status === "Upcoming" ? "info" : "success"}>
-                  {meet.status}
+                <Badge variant={meet.status === "scheduled" || meet.status === "Upcoming" ? "info" : "success"}>
+                  {meet.status === "scheduled" ? "Upcoming" : "Completed"}
                 </Badge>
               </div>
 
@@ -145,14 +170,14 @@ export const FacultyMeetings = () => {
 
               <div className="bg-slate-50 dark:bg-slate-900/30 p-3 rounded-xl border border-border text-xs text-text-secondary space-y-1">
                 <span className="text-[9px] font-black text-text-secondary uppercase">Agenda Notes</span>
-                <p className="line-clamp-2 leading-relaxed">"{meet.notes}"</p>
+                <p className="line-clamp-2 leading-relaxed">"{meet.agenda || meet.notes}"</p>
               </div>
             </div>
 
             <div className="flex items-center justify-between pt-3 border-t border-border shrink-0">
-              {meet.gmeetLink && meet.status === "Upcoming" ? (
+              {(meet.meetingLink || meet.gmeetLink) && (meet.status === "scheduled" || meet.status === "Upcoming") ? (
                 <a
-                  href={meet.gmeetLink}
+                  href={meet.meetingLink || meet.gmeetLink}
                   target="_blank"
                   rel="noreferrer"
                   className="inline-flex items-center text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 px-4 py-1.5 rounded-lg transition-colors"
@@ -203,16 +228,32 @@ export const FacultyMeetings = () => {
               </div>
 
               <form onSubmit={handleSchedule} className="space-y-4 text-xs">
-                <div className="space-y-1">
-                  <label className="text-[10px] font-black text-text-secondary uppercase">Sync Title</label>
-                  <input
-                    type="text"
-                    required
-                    value={meetTitle}
-                    onChange={(e) => setMeetTitle(e.target.value)}
-                    placeholder="e.g. Midterm Evaluation Review"
-                    className="w-full bg-[#F5F7FA] dark:bg-slate-800/50 border border-border rounded-xl px-3 py-2 text-xs text-text-primary outline-none focus:border-blue-600 font-bold"
-                  />
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black text-text-secondary uppercase">Sync Title</label>
+                    <input
+                      type="text"
+                      required
+                      value={meetTitle}
+                      onChange={(e) => setMeetTitle(e.target.value)}
+                      placeholder="e.g. Midterm Evaluation Review"
+                      className="w-full bg-[#F5F7FA] dark:bg-slate-800/50 border border-border rounded-xl px-3 py-2 text-xs text-text-primary outline-none focus:border-blue-600 font-bold"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black text-text-secondary uppercase">Select Intern</label>
+                    <select
+                      required
+                      value={meetStudent}
+                      onChange={(e) => setMeetStudent(e.target.value)}
+                      className="w-full bg-[#F5F7FA] dark:bg-slate-800/50 border border-border rounded-xl px-3 py-2 text-xs text-text-primary outline-none focus:border-blue-600 font-bold"
+                    >
+                      <option value="">Select an intern</option>
+                      {interns.map((i) => (
+                        <option key={i._id} value={i._id}>{i.name}</option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
@@ -304,7 +345,7 @@ export const FacultyMeetings = () => {
                 <div>
                   <p className="text-[10px] text-text-secondary font-black uppercase">Mentorship Agenda Notes</p>
                   <div className="bg-slate-50 dark:bg-slate-900/20 border border-border p-3 rounded-xl text-text-primary font-medium leading-relaxed mt-1">
-                    "{selectedMeeting.notes}"
+                    "{selectedMeeting.agenda || selectedMeeting.notes}"
                   </div>
                 </div>
 
